@@ -1,11 +1,23 @@
 import { useEffect, useMemo, useState } from 'react'
 import AdminToggle from './components/AdminToggle.jsx'
-import MallSelector from './components/MallSelector.jsx'
+import FilterBar from './components/FilterBar.jsx'
+import FoodPage from './components/FoodPage.jsx'
+import History from './components/History.jsx'
 import MallPage from './components/MallPage.jsx'
+import MallSelector from './components/MallSelector.jsx'
 import Navbar from './components/Navbar.jsx'
 import PinModal from './components/PinModal.jsx'
 import Wheel from './components/Wheel.jsx'
-import { clearAdminState, loadAdminState, saveAdminState } from './lib/storage.js'
+import {
+  DEFAULT_WHEEL_FILTERS,
+  clearAdminState,
+  loadAdminState,
+  loadSelectedMallId,
+  loadWheelFilters,
+  saveAdminState,
+  saveSelectedMallId,
+  saveWheelFilters,
+} from './lib/storage.js'
 import { supabase } from './lib/supabase.js'
 
 const PAGES = {
@@ -15,9 +27,59 @@ const PAGES = {
 }
 
 const ADMIN_PIN = '1022'
+const FOOD_STYLE_OPTIONS = [
+  'Malay',
+  'Chinese',
+  'Indian',
+  'Japanese',
+  'Korean',
+  'Western',
+  'Fast Food',
+  'Thai',
+  'Other',
+]
+const PRICE_RANGE_OPTIONS = ['$', '$$', '$$$']
+
+function normalizeWhitespace(value) {
+  return value.trim().replace(/\s+/g, ' ')
+}
+
+function normalizeApostrophes(value) {
+  return value.replace(/[\u2018\u2019\u201B\u2032]/g, "'")
+}
 
 function normalizeMallName(value) {
-  return value.trim().replace(/\s+/g, ' ')
+  return normalizeWhitespace(value)
+}
+
+function normalizeFoodName(value) {
+  return normalizeWhitespace(normalizeApostrophes(value))
+}
+
+function normalizeFoodNameForComparison(value) {
+  return normalizeFoodName(value).toLowerCase()
+}
+
+function applyFoodFilters(foods, filters) {
+  return foods.filter((food) => {
+    if (filters.halalOnly && !food.is_halal) {
+      return false
+    }
+
+    if (filters.veganOnly && !food.is_vegan) {
+      return false
+    }
+
+    if (filters.foodStyle && food.food_style !== filters.foodStyle) {
+      return false
+    }
+
+    if (filters.priceRange && food.price_range !== filters.priceRange) {
+      return false
+    }
+
+    return true
+  })
 }
 
 function App() {
@@ -28,22 +90,68 @@ function App() {
   const [malls, setMalls] = useState([])
   const [isLoadingMalls, setIsLoadingMalls] = useState(true)
   const [mallErrorMessage, setMallErrorMessage] = useState('')
-  const [activeMallId, setActiveMallId] = useState('')
+  const [activeMallId, setActiveMallId] = useState(() => loadSelectedMallId())
+  const [foods, setFoods] = useState([])
+  const [isLoadingFoods, setIsLoadingFoods] = useState(false)
+  const [foodErrorMessage, setFoodErrorMessage] = useState('')
+  const [filters, setFilters] = useState(() => loadWheelFilters())
+  const [historyEntries, setHistoryEntries] = useState([])
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true)
+  const [historyErrorMessage, setHistoryErrorMessage] = useState('')
+  const [historySaveErrorMessage, setHistorySaveErrorMessage] = useState('')
   const [lastResult, setLastResult] = useState('')
+
   const activeMall = useMemo(
     () => malls.find((mall) => mall.id === activeMallId) ?? null,
     [activeMallId, malls],
   )
+  const filteredFoods = useMemo(
+    () => applyFoodFilters(foods, filters),
+    [filters, foods],
+  )
+  const historyItems = useMemo(
+    () =>
+      historyEntries.map((entry) => ({
+        id: entry.id,
+        mallName:
+          malls.find((mall) => mall.id === entry.mall_id)?.name ?? 'Unknown mall',
+        foodName: entry.food_name_snapshot,
+        createdOn: entry.created_on,
+      })),
+    [historyEntries, malls],
+  )
 
   useEffect(() => {
     void loadMalls()
+    void loadSpinHistory()
   }, [])
+
+  useEffect(() => {
+    saveSelectedMallId(activeMallId)
+  }, [activeMallId])
+
+  useEffect(() => {
+    saveWheelFilters(filters)
+  }, [filters])
 
   useEffect(() => {
     if (!isAdmin && activePage !== PAGES.WHEEL) {
       setActivePage(PAGES.WHEEL)
     }
   }, [activePage, isAdmin])
+
+  useEffect(() => {
+    setLastResult('')
+
+    if (!activeMallId) {
+      setFoods([])
+      setFoodErrorMessage('')
+      setIsLoadingFoods(false)
+      return
+    }
+
+    void loadFoods(activeMallId)
+  }, [activeMallId])
 
   async function loadMalls(preferredMallId) {
     setIsLoadingMalls(true)
@@ -63,7 +171,6 @@ function App() {
     const nextMalls = (data ?? []).map((mall) => ({
       ...mall,
       name: normalizeMallName(mall.name),
-      options: [],
     }))
 
     setMalls(nextMalls)
@@ -72,14 +179,62 @@ function App() {
         return preferredMallId
       }
 
-      if (nextMalls.some((mall) => mall.id === currentMallId)) {
+      if (currentMallId && nextMalls.some((mall) => mall.id === currentMallId)) {
         return currentMallId
       }
 
       return nextMalls[0]?.id ?? ''
     })
-    setLastResult('')
     setIsLoadingMalls(false)
+  }
+
+  async function loadFoods(mallId) {
+    setIsLoadingFoods(true)
+    setFoodErrorMessage('')
+
+    const { data, error } = await supabase
+      .from('foods')
+      .select(
+        'id, mall_id, name, is_halal, is_vegan, food_style, price_range, created_on, modified_on',
+      )
+      .eq('mall_id', mallId)
+      .order('name', { ascending: true })
+
+    if (error) {
+      setFoodErrorMessage(error.message)
+      setFoods([])
+      setIsLoadingFoods(false)
+      return
+    }
+
+    setFoods(
+      (data ?? []).map((food) => ({
+        ...food,
+        name: normalizeFoodName(food.name),
+      })),
+    )
+    setIsLoadingFoods(false)
+  }
+
+  async function loadSpinHistory() {
+    setIsLoadingHistory(true)
+    setHistoryErrorMessage('')
+
+    const { data, error } = await supabase
+      .from('spin_history')
+      .select('id, mall_id, food_id, food_name_snapshot, created_on')
+      .order('created_on', { ascending: false })
+      .limit(50)
+
+    if (error) {
+      setHistoryErrorMessage(error.message)
+      setHistoryEntries([])
+      setIsLoadingHistory(false)
+      return
+    }
+
+    setHistoryEntries(data ?? [])
+    setIsLoadingHistory(false)
   }
 
   function handleAdminToggle(nextValue) {
@@ -161,7 +316,164 @@ function App() {
     }
 
     await loadMalls()
+    await loadSpinHistory()
     return { error: '' }
+  }
+
+  function validateFoodInput(foodValues, editingFoodId = '') {
+    const normalizedName = normalizeFoodName(foodValues.name ?? '')
+
+    if (!activeMallId) {
+      return { error: 'Select a mall first.' }
+    }
+
+    if (!normalizedName) {
+      return { error: 'Food name is required.' }
+    }
+
+    if (!FOOD_STYLE_OPTIONS.includes(foodValues.food_style)) {
+      return { error: 'Select a valid food style.' }
+    }
+
+    if (!PRICE_RANGE_OPTIONS.includes(foodValues.price_range)) {
+      return { error: 'Select a valid price range.' }
+    }
+
+    const normalizedLookupName = normalizeFoodNameForComparison(normalizedName)
+    const duplicateFood = foods.find(
+      (food) =>
+        food.id !== editingFoodId &&
+        normalizeFoodNameForComparison(food.name) === normalizedLookupName,
+    )
+
+    if (duplicateFood) {
+      return { error: 'A food with this name already exists for the selected mall.' }
+    }
+
+    return {
+      error: '',
+      values: {
+        mall_id: activeMallId,
+        name: normalizedName,
+        is_halal: Boolean(foodValues.is_halal),
+        is_vegan: Boolean(foodValues.is_vegan),
+        food_style: foodValues.food_style,
+        price_range: foodValues.price_range,
+      },
+    }
+  }
+
+  async function handleCreateFood(foodValues) {
+    if (!isAdmin) {
+      return { error: 'Admin mode is required.' }
+    }
+
+    const validation = validateFoodInput(foodValues)
+
+    if (validation.error) {
+      return { error: validation.error }
+    }
+
+    const { error } = await supabase.from('foods').insert(validation.values)
+
+    if (error) {
+      return { error: error.message }
+    }
+
+    await loadFoods(activeMallId)
+    return { error: '' }
+  }
+
+  async function handleUpdateFood(foodId, foodValues) {
+    if (!isAdmin) {
+      return { error: 'Admin mode is required.' }
+    }
+
+    const validation = validateFoodInput(foodValues, foodId)
+
+    if (validation.error) {
+      return { error: validation.error }
+    }
+
+    const { error } = await supabase
+      .from('foods')
+      .update(validation.values)
+      .eq('id', foodId)
+
+    if (error) {
+      return { error: error.message }
+    }
+
+    await loadFoods(activeMallId)
+    return { error: '' }
+  }
+
+  async function handleDeleteFood(foodId) {
+    if (!isAdmin) {
+      return { error: 'Admin mode is required.' }
+    }
+
+    const { error } = await supabase.from('foods').delete().eq('id', foodId)
+
+    if (error) {
+      return { error: error.message }
+    }
+
+    await loadFoods(activeMallId)
+    return { error: '' }
+  }
+
+  async function handleSpinComplete(food) {
+    setLastResult(food.name)
+    setHistorySaveErrorMessage('')
+
+    if (!activeMallId) {
+      return
+    }
+
+    const { error } = await supabase.from('spin_history').insert({
+      mall_id: activeMallId,
+      food_id: food.id,
+      food_name_snapshot: food.name,
+    })
+
+    if (error) {
+      setHistorySaveErrorMessage('Spin finished, but history could not be saved.')
+      return
+    }
+
+    await loadSpinHistory()
+  }
+
+  function handleFilterChange(nextFilters) {
+    setFilters((currentFilters) => ({
+      ...currentFilters,
+      ...nextFilters,
+    }))
+  }
+
+  function getWheelDisabledMessage() {
+    if (!activeMallId) {
+      return 'Choose a mall to load foods for the wheel.'
+    }
+
+    if (isLoadingFoods) {
+      return 'Loading foods for this mall.'
+    }
+
+    if (!foods.length) {
+      return 'No foods found for this mall yet. Admin can add them from the Food page.'
+    }
+
+    if (!filteredFoods.length) {
+      return 'No foods match the current filters. Adjust them to continue.'
+    }
+
+    if (filteredFoods.length === 1) {
+      return 'Only one food matches the current filters. Add more or broaden the filters.'
+    }
+
+    return 'Ready to spin.'
   }
 
   return (
@@ -178,7 +490,7 @@ function App() {
                   Spin once, settle lunch, move on.
                 </h1>
                 <p className="max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
-                  Wheel is public. Admin Mode unlocks mall management with a simple
+                  Wheel stays public. Admin Mode unlocks mall and food management with a
                   frontend PIN stored in localStorage.
                 </p>
               </div>
@@ -207,40 +519,46 @@ function App() {
                   activeMallId={activeMallId}
                   onSelect={setActiveMallId}
                 />
+                <FilterBar
+                  filters={filters}
+                  foodStyleOptions={FOOD_STYLE_OPTIONS}
+                  priceRangeOptions={PRICE_RANGE_OPTIONS}
+                  onChange={handleFilterChange}
+                  onReset={() => setFilters(DEFAULT_WHEEL_FILTERS)}
+                />
                 <Wheel
                   key={activeMall?.id ?? 'wheel'}
                   mallName={activeMall?.name ?? 'Select a mall'}
-                  options={activeMall?.options ?? []}
+                  options={filteredFoods}
                   lastResult={lastResult}
-                  onSpinComplete={setLastResult}
+                  disabledMessage={getWheelDisabledMessage()}
+                  isLoading={isLoadingFoods}
+                  onSpinComplete={handleSpinComplete}
                 />
               </section>
 
               <aside className="space-y-6">
-                <section className="rounded-[2rem] border border-slate-200/70 bg-white/80 p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur">
-                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
-                    Current Scope
+                {mallErrorMessage ? (
+                  <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {mallErrorMessage}
                   </p>
-                  <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-950">
-                    Foods are not implemented yet
-                  </h2>
-                  <p className="mt-3 text-sm leading-6 text-slate-600">
-                    Mall data is loaded from Supabase now. The Add Food flow, filters,
-                    and spin history are intentionally not part of this first step, so
-                    the wheel will stay disabled until food options are added later.
+                ) : null}
+                {!isLoadingMalls && !malls.length ? (
+                  <p className="rounded-2xl border border-dashed border-slate-300 bg-white/80 px-4 py-4 text-sm text-slate-600">
+                    No malls found. Unlock admin mode and add one from the Add Mall tab.
                   </p>
-                  {mallErrorMessage ? (
-                    <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                      {mallErrorMessage}
-                    </p>
-                  ) : null}
-                  {!isLoadingMalls && !malls.length ? (
-                    <p className="mt-4 rounded-2xl border border-dashed border-slate-300 px-4 py-4 text-sm text-slate-600">
-                      No malls found. Unlock admin mode and add one from the Add Mall
-                      tab.
-                    </p>
-                  ) : null}
-                </section>
+                ) : null}
+                {foodErrorMessage ? (
+                  <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {foodErrorMessage}
+                  </p>
+                ) : null}
+                <History
+                  entries={historyItems}
+                  isLoading={isLoadingHistory}
+                  errorMessage={historyErrorMessage}
+                  saveErrorMessage={historySaveErrorMessage}
+                />
               </aside>
             </div>
           ) : null}
@@ -257,18 +575,19 @@ function App() {
           ) : null}
 
           {activePage === PAGES.ADD_FOOD && isAdmin ? (
-            <section className="rounded-[2rem] border border-slate-200/70 bg-white/80 p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur">
-              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
-                Add Food
-              </p>
-              <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-950">
-                Coming next
-              </h2>
-              <p className="mt-3 text-sm leading-6 text-slate-600">
-                This tab is gated behind admin mode now, but food CRUD is intentionally
-                not implemented in this first part.
-              </p>
-            </section>
+            <FoodPage
+              malls={malls}
+              activeMallId={activeMallId}
+              foods={foods}
+              isLoading={isLoadingFoods}
+              errorMessage={foodErrorMessage}
+              foodStyleOptions={FOOD_STYLE_OPTIONS}
+              priceRangeOptions={PRICE_RANGE_OPTIONS}
+              onSelectMall={setActiveMallId}
+              onCreateFood={handleCreateFood}
+              onUpdateFood={handleUpdateFood}
+              onDeleteFood={handleDeleteFood}
+            />
           ) : null}
         </main>
       </div>

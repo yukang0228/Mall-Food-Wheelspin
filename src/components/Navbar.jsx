@@ -1,7 +1,7 @@
 const NAV_ITEMS = [
   { id: 'wheel', label: 'Wheel', adminOnly: false },
   { id: 'add-mall', label: 'Add Mall', adminOnly: true },
-  { id: 'add-food', label: 'Add Food', adminOnly: true },
+  { id: 'add-food', label: 'Food', adminOnly: true },
 ]
 
 function Navbar({ activePage, isAdmin, onNavigate }) {

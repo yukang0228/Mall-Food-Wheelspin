@@ -11,7 +11,7 @@ function formatTimestamp(value) {
   }).format(date)
 }
 
-function History({ entries }) {
+function History({ entries, isLoading, errorMessage, saveErrorMessage }) {
   return (
     <section className="rounded-[2rem] border border-slate-200/70 bg-white/80 p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur">
       <div className="flex items-start justify-between gap-4">
@@ -29,7 +29,21 @@ function History({ entries }) {
       </div>
 
       <div className="mt-5 max-h-[28rem] space-y-3 overflow-y-auto pr-1">
-        {entries.length ? (
+        {saveErrorMessage ? (
+          <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+            {saveErrorMessage}
+          </p>
+        ) : null}
+
+        {errorMessage ? (
+          <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {errorMessage}
+          </p>
+        ) : null}
+
+        {isLoading ? (
+          <p className="text-sm text-slate-600">Loading spin history...</p>
+        ) : entries.length ? (
           entries.map((entry) => (
             <article
               key={entry.id}
@@ -39,10 +53,10 @@ function History({ entries }) {
                 {entry.mallName}
               </p>
               <p className="mt-2 text-lg font-semibold text-slate-950">
-                {entry.result}
+                {entry.foodName}
               </p>
               <p className="mt-2 text-sm text-slate-500">
-                {formatTimestamp(entry.timestamp)}
+                {formatTimestamp(entry.createdOn)}
               </p>
             </article>
           ))

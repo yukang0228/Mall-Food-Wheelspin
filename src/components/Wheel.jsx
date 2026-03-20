@@ -33,7 +33,14 @@ function createSegmentPath(startAngle, endAngle, radius, center) {
   ].join(' ')
 }
 
-function Wheel({ mallName, options, lastResult, onSpinComplete }) {
+function Wheel({
+  mallName,
+  options,
+  lastResult,
+  disabledMessage,
+  isLoading,
+  onSpinComplete,
+}) {
   const [rotation, setRotation] = useState(0)
   const [isSpinning, setIsSpinning] = useState(false)
   const [status, setStatus] = useState('Ready to spin.')
@@ -71,6 +78,24 @@ function Wheel({ mallName, options, lastResult, onSpinComplete }) {
   }, [lastResult])
 
   useEffect(() => {
+    if (isSpinning) {
+      return
+    }
+
+    if (isLoading) {
+      setStatus(`Loading foods for ${mallName}...`)
+      return
+    }
+
+    if (options.length < 2) {
+      setStatus(disabledMessage)
+      return
+    }
+
+    setStatus('Ready to spin.')
+  }, [disabledMessage, isLoading, isSpinning, mallName, options.length])
+
+  useEffect(() => {
     if (!isSpinning) {
       return undefined
     }
@@ -100,7 +125,7 @@ function Wheel({ mallName, options, lastResult, onSpinComplete }) {
   )
 
   function handleSpin() {
-    if (isSpinning || options.length < 2) {
+    if (isSpinning || isLoading || options.length < 2) {
       return
     }
 
@@ -119,7 +144,7 @@ function Wheel({ mallName, options, lastResult, onSpinComplete }) {
     resultTimeoutRef.current = window.setTimeout(() => {
       setStatus(`Picked: ${chosen.name}`)
       setCurrentResult(chosen.name)
-      onSpinComplete(chosen.name)
+      void onSpinComplete(chosen)
     }, durationMs)
   }
 
@@ -135,14 +160,14 @@ function Wheel({ mallName, options, lastResult, onSpinComplete }) {
           </h2>
           <p className="mt-2 text-sm text-slate-600">
             {options.length < 2
-              ? 'Add at least two options to enable spinning.'
-              : 'The result is chosen uniformly at random across all current options.'}
+              ? disabledMessage
+              : 'The result is chosen uniformly at random across all current filtered foods.'}
           </p>
         </div>
         <button
           type="button"
           onClick={handleSpin}
-          disabled={isSpinning || options.length < 2}
+          disabled={isSpinning || isLoading || options.length < 2}
           className="rounded-2xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-300"
         >
           {isSpinning ? 'Spinning...' : 'Spin Wheel'}
@@ -198,7 +223,7 @@ function Wheel({ mallName, options, lastResult, onSpinComplete }) {
                   fontWeight="600"
                   textAnchor="middle"
                 >
-                  Add food options to render the wheel
+                  Need at least two foods to spin
                 </text>
               )}
               <circle cx={center} cy={center} r="26" fill="#0f172a" />
@@ -225,7 +250,7 @@ function Wheel({ mallName, options, lastResult, onSpinComplete }) {
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-2xl border border-slate-200 bg-white p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
-                Options
+                Matching Foods
               </p>
               <p className="mt-2 text-2xl font-bold text-slate-950">{options.length}</p>
             </div>

@@ -15,6 +15,7 @@ function MallSelector({ malls, activeMallId, onSelect }) {
           <select
             className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
             value={activeMallId}
+            disabled={!malls.length}
             onChange={(event) => onSelect(event.target.value)}
           >
             {malls.map((mall) => (
@@ -43,7 +44,7 @@ function MallSelector({ malls, activeMallId, onSelect }) {
             >
               <p className="text-base font-semibold text-slate-950">{mall.name}</p>
               <p className="mt-2 text-sm text-slate-600">
-                {mall.options.length} {mall.options.length === 1 ? 'option' : 'options'}
+                {isActive ? 'Currently selected' : 'Switch to this mall'}
               </p>
             </button>
           )
