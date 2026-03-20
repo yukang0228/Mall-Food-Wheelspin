@@ -71,5 +71,6 @@ The output is generated in `dist/`.
 ## Notes
 
 - App state is stored in browser `localStorage`.
+- Admin mode is frontend-only and uses a hardcoded PIN in the client, so it is not secure.
 - Importing JSON replaces the current in-browser state.
 - No backend or map integration is included in this MVP.

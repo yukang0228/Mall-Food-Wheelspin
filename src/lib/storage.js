@@ -1,4 +1,5 @@
 export const STORAGE_KEY = 'mall-food-wheelspin'
+export const ADMIN_STORAGE_KEY = 'mall-food-wheelspin-admin'
 export const SCHEMA_VERSION = 1
 
 export function loadStoredState(fallbackState) {
@@ -31,6 +32,30 @@ export function saveStoredState(state) {
         data: state,
       }),
     )
+  } catch {
+    return
+  }
+}
+
+export function loadAdminState() {
+  try {
+    return window.localStorage.getItem(ADMIN_STORAGE_KEY) === 'true'
+  } catch {
+    return false
+  }
+}
+
+export function saveAdminState(isAdmin) {
+  try {
+    window.localStorage.setItem(ADMIN_STORAGE_KEY, isAdmin ? 'true' : 'false')
+  } catch {
+    return
+  }
+}
+
+export function clearAdminState() {
+  try {
+    window.localStorage.removeItem(ADMIN_STORAGE_KEY)
   } catch {
     return
   }
