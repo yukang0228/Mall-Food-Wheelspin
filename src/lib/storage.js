@@ -2,12 +2,14 @@ export const STORAGE_KEY = 'mall-food-wheelspin'
 export const ADMIN_STORAGE_KEY = 'mall-food-wheelspin-admin'
 export const SELECTED_MALL_STORAGE_KEY = 'mall-food-wheelspin-selected-mall'
 export const WHEEL_FILTERS_STORAGE_KEY = 'mall-food-wheelspin-wheel-filters'
+export const THEME_MODE_STORAGE_KEY = 'mall-food-wheelspin-theme-mode'
 export const SCHEMA_VERSION = 1
 export const DEFAULT_WHEEL_FILTERS = {
   halalOnly: false,
   veganOnly: false,
   foodStyle: '',
   priceRange: '',
+  excludedFoodStyles: [],
 }
 
 export function loadStoredState(fallbackState) {
@@ -74,11 +76,16 @@ function readLegacyData() {
 }
 
 function normalizeWheelFilters(value) {
+  const excludedFoodStyles = Array.isArray(value?.excludedFoodStyles)
+    ? value.excludedFoodStyles.filter((item) => typeof item === 'string')
+    : []
+
   return {
     halalOnly: Boolean(value?.halalOnly),
     veganOnly: Boolean(value?.veganOnly),
     foodStyle: typeof value?.foodStyle === 'string' ? value.foodStyle : '',
     priceRange: typeof value?.priceRange === 'string' ? value.priceRange : '',
+    excludedFoodStyles,
   }
 }
 
@@ -131,6 +138,28 @@ export function saveWheelFilters(filters) {
       WHEEL_FILTERS_STORAGE_KEY,
       JSON.stringify(normalizeWheelFilters(filters)),
     )
+  } catch {
+    return
+  }
+}
+
+export function loadThemeMode() {
+  try {
+    const value = window.localStorage.getItem(THEME_MODE_STORAGE_KEY)
+
+    if (value === 'dark' || value === 'light') {
+      return value
+    }
+  } catch {
+    return 'light'
+  }
+
+  return 'light'
+}
+
+export function saveThemeMode(themeMode) {
+  try {
+    window.localStorage.setItem(THEME_MODE_STORAGE_KEY, themeMode)
   } catch {
     return
   }

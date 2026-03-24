@@ -6,6 +6,7 @@ function FoodPage({
   malls,
   activeMallId,
   foods,
+  isDark,
   isLoading,
   errorMessage,
   foodStyleOptions,
@@ -71,23 +72,45 @@ function FoodPage({
 
   return (
     <section className="space-y-6">
-      <div className="rounded-[2rem] border border-slate-200/70 bg-white/80 p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur">
+      <div
+        className={`rounded-[2rem] border p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur ${
+          isDark
+            ? 'border-slate-700/80 bg-slate-900/80'
+            : 'border-slate-200/70 bg-white/80'
+        }`}
+      >
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
+            <p
+              className={`text-xs font-semibold uppercase tracking-[0.28em] ${
+                isDark ? 'text-slate-400' : 'text-slate-500'
+              }`}
+            >
               Food Management
             </p>
-            <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-950">
+            <h2
+              className={`mt-2 text-2xl font-bold tracking-tight ${
+                isDark ? 'text-white' : 'text-slate-950'
+              }`}
+            >
               Create, edit, and delete foods by mall
             </h2>
           </div>
 
-          <label className="flex min-w-0 flex-col gap-2 text-sm font-medium text-slate-700 lg:w-80">
+          <label
+            className={`flex min-w-0 flex-col gap-2 text-sm font-medium lg:w-80 ${
+              isDark ? 'text-slate-200' : 'text-slate-700'
+            }`}
+          >
             Active mall
             <select
               value={activeMallId}
               onChange={(event) => onSelectMall(event.target.value)}
-              className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
+              className={`rounded-2xl border px-4 py-3 text-base outline-none transition focus:border-orange-400 focus:ring-4 focus:ring-orange-100 ${
+                isDark
+                  ? 'border-slate-700 bg-slate-800 text-slate-100 focus:bg-slate-800'
+                  : 'border-slate-200 bg-slate-50 text-slate-900 focus:bg-white'
+              }`}
             >
               {malls.map((mall) => (
                 <option key={mall.id} value={mall.id}>
@@ -99,11 +122,25 @@ function FoodPage({
         </div>
       </div>
 
-      <div className="rounded-[2rem] border border-slate-200/70 bg-white/80 p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur">
-        <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
+      <div
+        className={`rounded-[2rem] border p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur ${
+          isDark
+            ? 'border-slate-700/80 bg-slate-900/80'
+            : 'border-slate-200/70 bg-white/80'
+        }`}
+      >
+        <p
+          className={`text-xs font-semibold uppercase tracking-[0.28em] ${
+            isDark ? 'text-slate-400' : 'text-slate-500'
+          }`}
+        >
           Add Food
         </p>
-        <h3 className="mt-2 text-xl font-bold tracking-tight text-slate-950">
+        <h3
+          className={`mt-2 text-xl font-bold tracking-tight ${
+            isDark ? 'text-white' : 'text-slate-950'
+          }`}
+        >
           New food item
         </h3>
 
@@ -125,24 +162,44 @@ function FoodPage({
         ) : null}
       </div>
 
-      <div className="rounded-[2rem] border border-slate-200/70 bg-white/80 p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur">
+      <div
+        className={`rounded-[2rem] border p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur ${
+          isDark
+            ? 'border-slate-700/80 bg-slate-900/80'
+            : 'border-slate-200/70 bg-white/80'
+        }`}
+      >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
+            <p
+              className={`text-xs font-semibold uppercase tracking-[0.28em] ${
+                isDark ? 'text-slate-400' : 'text-slate-500'
+              }`}
+            >
               Food List
             </p>
-            <h3 className="mt-2 text-xl font-bold tracking-tight text-slate-950">
+            <h3
+              className={`mt-2 text-xl font-bold tracking-tight ${
+                isDark ? 'text-white' : 'text-slate-950'
+              }`}
+            >
               Foods for the selected mall
             </h3>
           </div>
-          <div className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-600">
+          <div
+            className={`rounded-full px-3 py-1 text-sm font-medium ${
+              isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600'
+            }`}
+          >
             {foods.length} items
           </div>
         </div>
 
         <div className="mt-5">
           {isLoading ? (
-            <p className="text-sm text-slate-600">Loading foods...</p>
+            <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+              Loading foods...
+            </p>
           ) : (
             <FoodList
               foods={foods}

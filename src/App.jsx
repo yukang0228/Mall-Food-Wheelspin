@@ -7,15 +7,18 @@ import MallPage from './components/MallPage.jsx'
 import MallSelector from './components/MallSelector.jsx'
 import Navbar from './components/Navbar.jsx'
 import PinModal from './components/PinModal.jsx'
+import ThemeToggle from './components/ThemeToggle.jsx'
 import Wheel from './components/Wheel.jsx'
 import {
   DEFAULT_WHEEL_FILTERS,
   clearAdminState,
   loadAdminState,
   loadSelectedMallId,
+  loadThemeMode,
   loadWheelFilters,
   saveAdminState,
   saveSelectedMallId,
+  saveThemeMode,
   saveWheelFilters,
 } from './lib/storage.js'
 import { supabase } from './lib/supabase.js'
@@ -37,7 +40,7 @@ const FOOD_STYLE_OPTIONS = [
   'Fast Food',
   'Thai',
   'Beverage',
-  'Pastry/Desert',
+  'Pastry/Dessert',
   'Other'
 ]
 const PRICE_RANGE_OPTIONS = ['$', '$$', '$$$']
@@ -64,6 +67,10 @@ function normalizeFoodNameForComparison(value) {
 
 function applyFoodFilters(foods, filters) {
   return foods.filter((food) => {
+    if (filters.excludedFoodStyles.includes(food.food_style)) {
+      return false
+    }
+
     if (filters.halalOnly && !food.is_halal) {
       return false
     }
@@ -102,6 +109,8 @@ function App() {
   const [historyErrorMessage, setHistoryErrorMessage] = useState('')
   const [historySaveErrorMessage, setHistorySaveErrorMessage] = useState('')
   const [lastResult, setLastResult] = useState('')
+  const [themeMode, setThemeMode] = useState(() => loadThemeMode())
+  const isDark = themeMode === 'dark'
 
   const activeMall = useMemo(
     () => malls.find((mall) => mall.id === activeMallId) ?? null,
@@ -122,6 +131,7 @@ function App() {
       })),
     [historyEntries, malls],
   )
+  const recentHistoryItems = useMemo(() => historyItems.slice(0, 5), [historyItems])
 
   useEffect(() => {
     void loadMalls()
@@ -135,6 +145,11 @@ function App() {
   useEffect(() => {
     saveWheelFilters(filters)
   }, [filters])
+
+  useEffect(() => {
+    saveThemeMode(themeMode)
+    document.documentElement.dataset.theme = themeMode
+  }, [themeMode])
 
   useEffect(() => {
     if (!isAdmin && activePage !== PAGES.WHEEL) {
@@ -479,33 +494,76 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(255,239,213,0.85),_rgba(249,250,251,0.96)_45%,_rgba(214,228,255,0.85)_100%)] text-slate-900">
+    <div
+      className={`min-h-screen ${
+        isDark
+          ? 'bg-[radial-gradient(circle_at_top,_rgba(30,41,59,0.98),_rgba(15,23,42,1)_45%,_rgba(2,6,23,1)_100%)] text-slate-100'
+          : 'bg-[radial-gradient(circle_at_top,_rgba(255,239,213,0.85),_rgba(249,250,251,0.96)_45%,_rgba(214,228,255,0.85)_100%)] text-slate-900'
+      }`}
+    >
       <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-6 sm:px-6 lg:px-8">
-        <header className="overflow-hidden rounded-[2rem] border border-white/70 bg-white/75 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.12)] backdrop-blur">
-          <div className="flex flex-col gap-6">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-              <div className="max-w-3xl space-y-3">
-                <p className="text-sm font-semibold uppercase tracking-[0.35em] text-orange-700">
+        <header
+          className={`overflow-hidden rounded-[1.75rem] border p-4 shadow-[0_24px_80px_rgba(15,23,42,0.12)] backdrop-blur sm:p-5 ${
+            isDark
+              ? 'border-slate-700/80 bg-slate-900/80'
+              : 'border-white/70 bg-white/75'
+          }`}
+        >
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="max-w-3xl space-y-2">
+                <p
+                  className={`text-xs font-semibold uppercase tracking-[0.35em] ${
+                    isDark ? 'text-orange-300' : 'text-orange-700'
+                  }`}
+                >
                   Mall Food Wheelspin
                 </p>
-                <h1 className="font-['Trebuchet_MS','Avenir_Next',sans-serif] text-4xl font-black tracking-tight text-slate-950 sm:text-5xl">
+                <h1
+                  className={`font-['Trebuchet_MS','Avenir_Next',sans-serif] text-3xl font-black tracking-tight sm:text-4xl ${
+                    isDark ? 'text-white' : 'text-slate-950'
+                  }`}
+                >
                   Spin once, settle lunch, move on.
                 </h1>
-                <p className="max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
+                <p
+                  className={`max-w-2xl text-sm leading-6 ${
+                    isDark ? 'text-slate-300' : 'text-slate-600'
+                  }`}
+                >
                   Wheel stays public. Admin Mode unlocks mall and food management with a
                   frontend PIN stored in localStorage.
                 </p>
               </div>
-              <AdminToggle isAdmin={isAdmin} onChange={handleAdminToggle} />
+              <div className="flex flex-wrap items-center gap-3">
+                <ThemeToggle
+                  themeMode={themeMode}
+                  onToggle={() =>
+                    setThemeMode((currentTheme) =>
+                      currentTheme === 'dark' ? 'light' : 'dark',
+                    )
+                  }
+                />
+                <AdminToggle
+                  isAdmin={isAdmin}
+                  isDark={isDark}
+                  onChange={handleAdminToggle}
+                />
+              </div>
             </div>
 
-            <div className="flex flex-col gap-4 border-t border-slate-200/80 pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <div
+              className={`flex flex-col gap-3 border-t pt-3 sm:flex-row sm:items-center sm:justify-between ${
+                isDark ? 'border-slate-700/80' : 'border-slate-200/80'
+              }`}
+            >
               <Navbar
                 activePage={activePage}
+                isDark={isDark}
                 isAdmin={isAdmin}
                 onNavigate={setActivePage}
               />
-              <p className="text-sm text-slate-500">
+              <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                 {isAdmin ? 'Admin mode unlocked' : 'Admin mode locked'}
               </p>
             </div>
@@ -519,17 +577,20 @@ function App() {
                 <MallSelector
                   malls={malls}
                   activeMallId={activeMallId}
+                  isDark={isDark}
                   onSelect={setActiveMallId}
                 />
                 <FilterBar
                   filters={filters}
                   foodStyleOptions={FOOD_STYLE_OPTIONS}
                   priceRangeOptions={PRICE_RANGE_OPTIONS}
+                  isDark={isDark}
                   onChange={handleFilterChange}
                   onReset={() => setFilters(DEFAULT_WHEEL_FILTERS)}
                 />
                 <Wheel
                   key={activeMall?.id ?? 'wheel'}
+                  isDark={isDark}
                   mallName={activeMall?.name ?? 'Select a mall'}
                   options={filteredFoods}
                   lastResult={lastResult}
@@ -546,7 +607,13 @@ function App() {
                   </p>
                 ) : null}
                 {!isLoadingMalls && !malls.length ? (
-                  <p className="rounded-2xl border border-dashed border-slate-300 bg-white/80 px-4 py-4 text-sm text-slate-600">
+                  <p
+                    className={`rounded-2xl border border-dashed px-4 py-4 text-sm ${
+                      isDark
+                        ? 'border-slate-700 bg-slate-900/80 text-slate-300'
+                        : 'border-slate-300 bg-white/80 text-slate-600'
+                    }`}
+                  >
                     No malls found. Unlock admin mode and add one from the Add Mall tab.
                   </p>
                 ) : null}
@@ -556,7 +623,8 @@ function App() {
                   </p>
                 ) : null}
                 <History
-                  entries={historyItems}
+                  entries={recentHistoryItems}
+                  isDark={isDark}
                   isLoading={isLoadingHistory}
                   errorMessage={historyErrorMessage}
                   saveErrorMessage={historySaveErrorMessage}
@@ -568,6 +636,7 @@ function App() {
           {activePage === PAGES.ADD_MALL && isAdmin ? (
             <MallPage
               malls={malls}
+              isDark={isDark}
               isLoading={isLoadingMalls}
               errorMessage={mallErrorMessage}
               onCreateMall={handleCreateMall}
@@ -581,6 +650,7 @@ function App() {
               malls={malls}
               activeMallId={activeMallId}
               foods={foods}
+              isDark={isDark}
               isLoading={isLoadingFoods}
               errorMessage={foodErrorMessage}
               foodStyleOptions={FOOD_STYLE_OPTIONS}
@@ -597,6 +667,7 @@ function App() {
       <PinModal
         isOpen={isPinModalOpen}
         errorMessage={pinErrorMessage}
+        isDark={isDark}
         onClose={handleClosePinModal}
         onSubmit={handlePinSubmit}
       />

@@ -1,6 +1,12 @@
-function AdminToggle({ isAdmin, onChange }) {
+function AdminToggle({ isAdmin, isDark, onChange }) {
   return (
-    <label className="inline-flex items-center gap-3 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm">
+    <label
+      className={`inline-flex items-center gap-3 rounded-full border px-3 py-1.5 text-sm font-medium shadow-sm ${
+        isDark
+          ? 'border-slate-700 bg-slate-900 text-slate-200'
+          : 'border-slate-200 bg-white text-slate-700'
+      }`}
+    >
       <span>Admin Mode</span>
       <button
         type="button"

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import ResultModal from './ResultModal.jsx'
 
 const COLORS = [
   '#f97316',
@@ -34,6 +35,7 @@ function createSegmentPath(startAngle, endAngle, radius, center) {
 }
 
 function Wheel({
+  isDark,
   mallName,
   options,
   lastResult,
@@ -43,13 +45,14 @@ function Wheel({
 }) {
   const [rotation, setRotation] = useState(0)
   const [isSpinning, setIsSpinning] = useState(false)
-  const [status, setStatus] = useState('Ready to spin.')
   const [currentResult, setCurrentResult] = useState(lastResult)
+  const [pendingResult, setPendingResult] = useState(null)
+  const [isResultModalOpen, setIsResultModalOpen] = useState(false)
   const spinTimeoutRef = useRef(null)
   const resultTimeoutRef = useRef(null)
-  const size = 360
+  const size = 440
   const center = size / 2
-  const radius = 158
+  const radius = 194
   const durationMs = 4800
   const segmentAngle = options.length ? 360 / options.length : 0
 
@@ -59,7 +62,7 @@ function Wheel({
         const startAngle = index * segmentAngle - 90
         const endAngle = startAngle + segmentAngle
         const labelAngle = startAngle + segmentAngle / 2
-        const labelPoint = toPoint(labelAngle, radius * 0.63, center)
+        const labelPoint = toPoint(labelAngle, radius * 0.68, center)
 
         return {
           id: option.id,
@@ -78,22 +81,11 @@ function Wheel({
   }, [lastResult])
 
   useEffect(() => {
-    if (isSpinning) {
-      return
+    if (!isSpinning && options.length < 2) {
+      setPendingResult(null)
+      setIsResultModalOpen(false)
     }
-
-    if (isLoading) {
-      setStatus(`Loading foods for ${mallName}...`)
-      return
-    }
-
-    if (options.length < 2) {
-      setStatus(disabledMessage)
-      return
-    }
-
-    setStatus('Ready to spin.')
-  }, [disabledMessage, isLoading, isSpinning, mallName, options.length])
+  }, [isSpinning, options.length])
 
   useEffect(() => {
     if (!isSpinning) {
@@ -124,7 +116,7 @@ function Wheel({
     [],
   )
 
-  function handleSpin() {
+  function startSpin() {
     if (isSpinning || isLoading || options.length < 2) {
       return
     }
@@ -137,135 +129,181 @@ function Wheel({
     const nextRotation = rotation + extraTurns + offsetToPointer
 
     setIsSpinning(true)
-    setStatus(`Spinning for ${mallName}...`)
     setRotation(nextRotation)
     setCurrentResult('')
+    setPendingResult(null)
+    setIsResultModalOpen(false)
 
     resultTimeoutRef.current = window.setTimeout(() => {
-      setStatus(`Picked: ${chosen.name}`)
       setCurrentResult(chosen.name)
+      setPendingResult(chosen)
+      setIsResultModalOpen(true)
       void onSpinComplete(chosen)
     }, durationMs)
   }
 
+  function handleSpinAgain() {
+    if (isSpinning) {
+      return
+    }
+
+    setIsResultModalOpen(false)
+    startSpin()
+  }
+
   return (
-    <section className="rounded-[2rem] border border-slate-200/70 bg-white/80 p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
-            Wheel
-          </p>
-          <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-950">
-            {mallName}
-          </h2>
-          <p className="mt-2 text-sm text-slate-600">
-            {options.length < 2
-              ? disabledMessage
-              : 'The result is chosen uniformly at random across all current filtered foods.'}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={handleSpin}
-          disabled={isSpinning || isLoading || options.length < 2}
-          className="rounded-2xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-300"
-        >
-          {isSpinning ? 'Spinning...' : 'Spin Wheel'}
-        </button>
-      </div>
-
-      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(280px,420px)_minmax(0,1fr)] lg:items-center">
-        <div className="mx-auto w-full max-w-[420px]">
-          <div className="relative aspect-square rounded-full bg-[radial-gradient(circle,_rgba(255,255,255,1)_0%,_rgba(226,232,240,0.92)_100%)] p-4 shadow-inner">
-            <div className="absolute left-1/2 top-2 z-10 h-0 w-0 -translate-x-1/2 border-x-[18px] border-t-[30px] border-x-transparent border-t-slate-950 drop-shadow-[0_10px_12px_rgba(15,23,42,0.2)]" />
-            <svg
-              viewBox={`0 0 ${size} ${size}`}
-              className="h-full w-full drop-shadow-[0_30px_40px_rgba(15,23,42,0.16)]"
-              style={{
-                transform: `rotate(${rotation}deg)`,
-                transition: isSpinning
-                  ? `transform ${durationMs}ms cubic-bezier(0.12, 0.82, 0.18, 1)`
-                  : 'none',
-              }}
+    <>
+      <section
+        className={`rounded-[1.75rem] border p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur ${
+          isDark
+            ? 'border-slate-700/80 bg-slate-900/80'
+            : 'border-slate-200/70 bg-white/80'
+        }`}
+      >
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p
+              className={`text-xs font-semibold uppercase tracking-[0.28em] ${
+                isDark ? 'text-slate-400' : 'text-slate-500'
+              }`}
             >
-              <circle cx={center} cy={center} r={radius + 10} fill="#e2e8f0" />
-              {segments.length ? (
-                segments.map((segment) => (
-                  <g key={segment.id}>
-                    <path
-                      d={segment.path}
-                      fill={segment.fill}
-                      stroke="rgba(255,255,255,0.92)"
-                      strokeWidth="2"
-                    />
-                    <text
-                      x={segment.labelPoint.x}
-                      y={segment.labelPoint.y}
-                      fill="white"
-                      fontSize="13"
-                      fontWeight="700"
-                      textAnchor="middle"
-                      dominantBaseline="middle"
-                      transform={`rotate(${segment.labelRotation} ${segment.labelPoint.x} ${segment.labelPoint.y})`}
-                    >
-                      {segment.name.length > 16
-                        ? `${segment.name.slice(0, 15)}...`
-                        : segment.name}
-                    </text>
-                  </g>
-                ))
-              ) : (
-                <text
-                  x={center}
-                  y={center}
-                  fill="#475569"
-                  fontSize="16"
-                  fontWeight="600"
-                  textAnchor="middle"
-                >
-                  Need at least two foods to spin
-                </text>
-              )}
-              <circle cx={center} cy={center} r="26" fill="#0f172a" />
-              <circle cx={center} cy={center} r="10" fill="#fff" opacity="0.85" />
-            </svg>
+              Wheel
+            </p>
+            <h2
+              className={`mt-1 text-2xl font-bold tracking-tight ${
+                isDark ? 'text-white' : 'text-slate-950'
+              }`}
+            >
+              {mallName}
+            </h2>
+            <p className={`mt-2 text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+              {options.length < 2
+                ? disabledMessage
+                : 'Uniform random pick from the current spin pool.'}
+            </p>
           </div>
+          <button
+            type="button"
+            onClick={startSpin}
+            disabled={isSpinning || isLoading || options.length < 2}
+            className="rounded-2xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-400"
+          >
+            {isSpinning ? 'Spinning...' : 'Spin Wheel'}
+          </button>
         </div>
 
-        <div className="space-y-4">
-          <div className="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
-              Status
-            </p>
-            <p className="mt-3 text-lg font-semibold text-slate-900">{status}</p>
-          </div>
-          <div className="rounded-[1.75rem] bg-slate-950 p-6 text-white shadow-[0_22px_40px_rgba(15,23,42,0.28)]">
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-300">
-              Result
-            </p>
-            <p className="mt-4 font-['Georgia','Times_New_Roman',serif] text-3xl font-bold tracking-tight sm:text-4xl">
-              {currentResult || 'Waiting for the next spin'}
-            </p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl border border-slate-200 bg-white p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
-                Matching Foods
-              </p>
-              <p className="mt-2 text-2xl font-bold text-slate-950">{options.length}</p>
+        <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-center">
+          <div className="mx-auto w-full max-w-[540px]">
+            <div
+              className={`relative aspect-square rounded-full p-5 shadow-inner ${
+                isDark
+                  ? 'bg-[radial-gradient(circle,_rgba(51,65,85,1)_0%,_rgba(15,23,42,0.96)_100%)]'
+                  : 'bg-[radial-gradient(circle,_rgba(255,255,255,1)_0%,_rgba(226,232,240,0.92)_100%)]'
+              }`}
+            >
+              <div className="absolute left-1/2 top-3 z-10 h-0 w-0 -translate-x-1/2 border-x-[22px] border-t-[36px] border-x-transparent border-t-slate-950 drop-shadow-[0_10px_12px_rgba(15,23,42,0.2)]" />
+              <svg
+                viewBox={`0 0 ${size} ${size}`}
+                className="h-full w-full drop-shadow-[0_30px_40px_rgba(15,23,42,0.16)]"
+                style={{
+                  transform: `rotate(${rotation}deg)`,
+                  transition: isSpinning
+                    ? `transform ${durationMs}ms cubic-bezier(0.12, 0.82, 0.18, 1)`
+                    : 'none',
+                }}
+              >
+                <circle
+                  cx={center}
+                  cy={center}
+                  r={radius + 12}
+                  fill={isDark ? '#334155' : '#e2e8f0'}
+                />
+                {segments.length ? (
+                  segments.map((segment) => (
+                    <g key={segment.id}>
+                      <path
+                        d={segment.path}
+                        fill={segment.fill}
+                        stroke="rgba(255,255,255,0.92)"
+                        strokeWidth="2"
+                      />
+                      <text
+                        x={segment.labelPoint.x}
+                        y={segment.labelPoint.y}
+                        fill="white"
+                        fontSize="14"
+                        fontWeight="700"
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        transform={`rotate(${segment.labelRotation} ${segment.labelPoint.x} ${segment.labelPoint.y})`}
+                      >
+                        {segment.name.length > 18
+                          ? `${segment.name.slice(0, 17)}...`
+                          : segment.name}
+                      </text>
+                    </g>
+                  ))
+                ) : (
+                  <text
+                    x={center}
+                    y={center}
+                    fill={isDark ? '#cbd5e1' : '#475569'}
+                    fontSize="18"
+                    fontWeight="600"
+                    textAnchor="middle"
+                  >
+                    Need at least two foods to spin
+                  </text>
+                )}
+                <circle cx={center} cy={center} r="28" fill="#0f172a" />
+                <circle cx={center} cy={center} r="11" fill="#fff" opacity="0.85" />
+              </svg>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
-                Ready
+          </div>
+
+          <div className="space-y-3">
+            <div
+              className={`rounded-[1.5rem] border p-4 ${
+                isDark
+                  ? 'border-slate-700 bg-slate-950/70'
+                  : 'border-slate-200 bg-slate-50'
+              }`}
+            >
+              <p
+                className={`text-xs font-semibold uppercase tracking-[0.24em] ${
+                  isDark ? 'text-slate-400' : 'text-slate-500'
+                }`}
+              >
+                Spin pool
               </p>
-              <p className="mt-2 text-2xl font-bold text-slate-950">
-                {options.length >= 2 ? 'Yes' : 'No'}
+              <p className={`mt-2 text-3xl font-bold ${isDark ? 'text-white' : 'text-slate-950'}`}>
+                {options.length}
+              </p>
+            </div>
+            <div
+              className={`rounded-[1.5rem] p-5 shadow-[0_22px_40px_rgba(15,23,42,0.2)] ${
+                isDark ? 'bg-slate-800 text-white' : 'bg-slate-950 text-white'
+              }`}
+            >
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-300">
+                Latest result
+              </p>
+              <p className="mt-3 font-['Georgia','Times_New_Roman',serif] text-2xl font-bold tracking-tight">
+                {currentResult || 'Waiting for the next spin'}
               </p>
             </div>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
+
+      <ResultModal
+        isDark={isDark}
+        isOpen={isResultModalOpen}
+        resultName={pendingResult?.name ?? ''}
+        onConfirm={() => setIsResultModalOpen(false)}
+        onSpinAgain={handleSpinAgain}
+      />
+    </>
   )
 }
 

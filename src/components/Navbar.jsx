@@ -4,11 +4,11 @@ const NAV_ITEMS = [
   { id: 'add-food', label: 'Food', adminOnly: true },
 ]
 
-function Navbar({ activePage, isAdmin, onNavigate }) {
+function Navbar({ activePage, isAdmin, isDark, onNavigate }) {
   const visibleItems = NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin)
 
   return (
-    <nav className="flex flex-wrap gap-3">
+    <nav className="flex flex-wrap gap-2">
       {visibleItems.map((item) => {
         const isActive = item.id === activePage
 
@@ -17,10 +17,12 @@ function Navbar({ activePage, isAdmin, onNavigate }) {
             key={item.id}
             type="button"
             onClick={() => onNavigate(item.id)}
-            className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+            className={`rounded-full px-3 py-1.5 text-sm font-semibold transition ${
               isActive
                 ? 'bg-slate-950 text-white'
-                : 'bg-white text-slate-700 hover:bg-slate-100'
+                : isDark
+                  ? 'bg-slate-800 text-slate-200 hover:bg-slate-700'
+                  : 'bg-white text-slate-700 hover:bg-slate-100'
             }`}
           >
             {item.label}
