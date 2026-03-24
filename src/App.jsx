@@ -36,7 +36,9 @@ const FOOD_STYLE_OPTIONS = [
   'Western',
   'Fast Food',
   'Thai',
-  'Other',
+  'Beverage',
+  'Pastry/Desert',
+  'Other'
 ]
 const PRICE_RANGE_OPTIONS = ['$', '$$', '$$$']
 
