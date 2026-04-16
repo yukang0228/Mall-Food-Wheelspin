@@ -1,35 +1,104 @@
+import { useState } from 'react'
+
 const NAV_ITEMS = [
   { id: 'wheel', label: 'Wheel', adminOnly: false },
   { id: 'add-mall', label: 'Add Mall', adminOnly: true },
   { id: 'add-food', label: 'Food', adminOnly: true },
 ]
 
-function Navbar({ activePage, isAdmin, isDark, onNavigate }) {
+function Navbar({
+  activePage,
+  isAdmin,
+  isDark,
+  authStatusMessage,
+  isLoadingProfile,
+  sessionEmail,
+  onNavigate,
+  onOpenAdminSignIn,
+  onSignOut,
+}) {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const visibleItems = NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin)
+  const authLabel = sessionEmail ? 'Sign Out' : 'Admin Sign In'
+  const statusLabel =
+    authStatusMessage ||
+    (isLoadingProfile
+      ? 'Checking admin access'
+      : isAdmin
+        ? `Admin: ${sessionEmail}`
+        : sessionEmail
+          ? `Signed in: ${sessionEmail}`
+          : 'Public wheel access')
 
   return (
-    <nav className="flex flex-wrap gap-2">
-      {visibleItems.map((item) => {
-        const isActive = item.id === activePage
+    <div className="navbar-shell">
+      <div className="flex items-center gap-2 sm:hidden">
+        <button
+          type="button"
+          onClick={() => setIsMobileMenuOpen((currentValue) => !currentValue)}
+          className="navbar-mobile-toggle"
+          data-mode={isDark ? 'dark' : 'light'}
+          aria-label="Toggle navigation menu"
+          aria-expanded={isMobileMenuOpen}
+        >
+          <span className="text-lg leading-none">{isMobileMenuOpen ? '×' : '≡'}</span>
+        </button>
 
-        return (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => onNavigate(item.id)}
-            className={`rounded-full px-3 py-1.5 text-sm font-semibold transition ${
-              isActive
-                ? 'bg-slate-950 text-white'
-                : isDark
-                  ? 'bg-slate-800 text-slate-200 hover:bg-slate-700'
-                  : 'bg-white text-slate-700 hover:bg-slate-100'
-            }`}
-          >
-            {item.label}
-          </button>
-        )
-      })}
-    </nav>
+        {isMobileMenuOpen ? (
+          <nav className="navbar-links">
+            {visibleItems.map((item) => {
+              const isActive = item.id === activePage
+
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => {
+                    onNavigate(item.id)
+                    setIsMobileMenuOpen(false)
+                  }}
+                  className={`button-chip ${isActive ? 'button-chip--active' : 'button-chip--neutral'}`}
+                  data-mode={isDark ? 'dark' : 'light'}
+                >
+                  {item.label}
+                </button>
+              )
+            })}
+          </nav>
+        ) : null}
+      </div>
+
+      <nav className="navbar-links hidden sm:flex">
+        {visibleItems.map((item) => {
+          const isActive = item.id === activePage
+
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onNavigate(item.id)}
+              className={`button-chip ${isActive ? 'button-chip--active' : 'button-chip--neutral'}`}
+              data-mode={isDark ? 'dark' : 'light'}
+            >
+              {item.label}
+            </button>
+          )
+        })}
+      </nav>
+
+      <div className="navbar-auth-row">
+        <p className="navbar-status" data-mode={isDark ? 'dark' : 'light'}>
+          {statusLabel}
+        </p>
+        <button
+          type="button"
+          onClick={sessionEmail ? onSignOut : onOpenAdminSignIn}
+          className={`button-chip ${isDark ? 'button-chip--dark' : 'button-chip--light'}`}
+        >
+          {authLabel}
+        </button>
+      </div>
+    </div>
   )
 }
 

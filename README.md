@@ -30,6 +30,14 @@ Install dependencies:
 npm install
 ```
 
+Create a local `.env` file for values you do not want committed:
+
+```bash
+VITE_SUPABASE_URL=your-supabase-url
+VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+VITE_ADMIN_GATE_PIN=your-admin-pin
+```
+
 ## Development
 
 Run the Vite dev server:
@@ -70,7 +78,10 @@ The output is generated in `dist/`.
 
 ## Notes
 
-- App state is stored in browser `localStorage`.
-- Admin mode is frontend-only and uses a hardcoded PIN in the client, so it is not secure.
+- Selected mall, wheel filters, and theme mode are stored in browser `localStorage`.
+- Supabase RLS now requires matching policies for public wheel reads and authenticated admin writes.
+- Admin access depends on a signed-in Supabase user whose `profiles.role` is `admin`.
+- `.env` files are gitignored; use `.env.example` as the committed template.
+- Vite dev and preview now send baseline security headers. Mirror equivalent headers in your production hosting config.
 - Importing JSON replaces the current in-browser state.
 - No backend or map integration is included in this MVP.

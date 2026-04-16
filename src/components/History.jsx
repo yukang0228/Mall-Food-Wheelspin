@@ -13,50 +13,24 @@ function formatTimestamp(value) {
 
 function History({ entries, isDark, isLoading, errorMessage, saveErrorMessage }) {
   return (
-    <section
-      className={`rounded-[1.75rem] border p-4 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur ${
-        isDark
-          ? 'border-slate-700/80 bg-slate-900/80'
-          : 'border-slate-200/70 bg-white/80'
-      }`}
-    >
-      <div className="flex items-start justify-between gap-4">
+    <section className="surface-panel" data-mode={isDark ? 'dark' : 'light'}>
+      <div className="history-header">
         <div>
-          <p
-            className={`text-xs font-semibold uppercase tracking-[0.28em] ${
-              isDark ? 'text-slate-400' : 'text-slate-500'
-            }`}
-          >
-            History
-          </p>
-          <h2
-            className={`mt-1 text-xl font-bold tracking-tight ${
-              isDark ? 'text-white' : 'text-slate-950'
-            }`}
-          >
-            Last 5 spins
-          </h2>
+          <p className="section-kicker" data-mode={isDark ? 'dark' : 'light'}>History</p>
+          <h2 className="section-title" data-mode={isDark ? 'dark' : 'light'}>Last 5 spins</h2>
         </div>
-        <div
-          className={`rounded-full px-3 py-1 text-xs font-medium ${
-            isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600'
-          }`}
-        >
+        <div className="history-count" data-mode={isDark ? 'dark' : 'light'}>
           {entries.length} saved
         </div>
       </div>
 
-      <div className="mt-4 space-y-2">
+      <div className="history-list">
         {saveErrorMessage ? (
-          <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-            {saveErrorMessage}
-          </p>
+          <p className="status-message status-message--warning">{saveErrorMessage}</p>
         ) : null}
 
         {errorMessage ? (
-          <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {errorMessage}
-          </p>
+          <p className="status-message status-message--error">{errorMessage}</p>
         ) : null}
 
         {isLoading ? (
@@ -67,29 +41,12 @@ function History({ entries, isDark, isLoading, errorMessage, saveErrorMessage })
           entries.map((entry) => (
             <article
               key={entry.id}
-              className={`rounded-[1.25rem] border px-3 py-3 ${
-                isDark
-                  ? 'border-slate-700 bg-slate-950/70'
-                  : 'border-slate-200 bg-slate-50'
-              }`}
+              className="history-item"
+              data-mode={isDark ? 'dark' : 'light'}
             >
-              <p
-                className={`text-[11px] font-semibold uppercase tracking-[0.22em] ${
-                  isDark ? 'text-slate-400' : 'text-slate-500'
-                }`}
-              >
-                {entry.mallName}
-              </p>
-              <p
-                className={`mt-1 text-base font-semibold ${
-                  isDark ? 'text-white' : 'text-slate-950'
-                }`}
-              >
-                {entry.foodName}
-              </p>
-              <p className={`mt-1 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                {formatTimestamp(entry.createdOn)}
-              </p>
+              <p className="history-item-mall" data-mode={isDark ? 'dark' : 'light'}>{entry.mallName}</p>
+              <p className="history-item-name" data-mode={isDark ? 'dark' : 'light'}>{entry.foodName}</p>
+              <p className="history-item-time" data-mode={isDark ? 'dark' : 'light'}>{formatTimestamp(entry.createdOn)}</p>
             </article>
           ))
         ) : (

@@ -80,23 +80,6 @@ function FoodPage({
         }`}
       >
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p
-              className={`text-xs font-semibold uppercase tracking-[0.28em] ${
-                isDark ? 'text-slate-400' : 'text-slate-500'
-              }`}
-            >
-              Food Management
-            </p>
-            <h2
-              className={`mt-2 text-2xl font-bold tracking-tight ${
-                isDark ? 'text-white' : 'text-slate-950'
-              }`}
-            >
-              Create, edit, and delete foods by mall
-            </h2>
-          </div>
-
           <label
             className={`flex min-w-0 flex-col gap-2 text-sm font-medium lg:w-80 ${
               isDark ? 'text-slate-200' : 'text-slate-700'
@@ -129,22 +112,7 @@ function FoodPage({
             : 'border-slate-200/70 bg-white/80'
         }`}
       >
-        <p
-          className={`text-xs font-semibold uppercase tracking-[0.28em] ${
-            isDark ? 'text-slate-400' : 'text-slate-500'
-          }`}
-        >
-          Add Food
-        </p>
-        <h3
-          className={`mt-2 text-xl font-bold tracking-tight ${
-            isDark ? 'text-white' : 'text-slate-950'
-          }`}
-        >
-          New food item
-        </h3>
-
-        <div className="mt-5">
+        <div>
           <FoodForm
             initialValues={null}
             foodStyleOptions={foodStyleOptions}
@@ -170,22 +138,6 @@ function FoodPage({
         }`}
       >
         <div className="flex items-start justify-between gap-4">
-          <div>
-            <p
-              className={`text-xs font-semibold uppercase tracking-[0.28em] ${
-                isDark ? 'text-slate-400' : 'text-slate-500'
-              }`}
-            >
-              Food List
-            </p>
-            <h3
-              className={`mt-2 text-xl font-bold tracking-tight ${
-                isDark ? 'text-white' : 'text-slate-950'
-              }`}
-            >
-              Foods for the selected mall
-            </h3>
-          </div>
           <div
             className={`rounded-full px-3 py-1 text-sm font-medium ${
               isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600'

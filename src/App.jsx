@@ -1,22 +1,19 @@
 import { useEffect, useMemo, useState } from 'react'
-import AdminToggle from './components/AdminToggle.jsx'
+import AdminAuthModal from './components/AdminAuthModal.jsx'
 import FilterBar from './components/FilterBar.jsx'
 import FoodPage from './components/FoodPage.jsx'
 import History from './components/History.jsx'
 import MallPage from './components/MallPage.jsx'
 import MallSelector from './components/MallSelector.jsx'
+import MobilePanelModal from './components/MobilePanelModal.jsx'
 import Navbar from './components/Navbar.jsx'
-import PinModal from './components/PinModal.jsx'
 import ThemeToggle from './components/ThemeToggle.jsx'
 import Wheel from './components/Wheel.jsx'
 import {
   DEFAULT_WHEEL_FILTERS,
-  clearAdminState,
-  loadAdminState,
   loadSelectedMallId,
   loadThemeMode,
   loadWheelFilters,
-  saveAdminState,
   saveSelectedMallId,
   saveThemeMode,
   saveWheelFilters,
@@ -29,7 +26,6 @@ const PAGES = {
   ADD_FOOD: 'add-food',
 }
 
-const ADMIN_PIN = '1022'
 const FOOD_STYLE_OPTIONS = [
   'Malay',
   'Chinese',
@@ -65,6 +61,23 @@ function normalizeFoodNameForComparison(value) {
   return normalizeFoodName(value).toLowerCase()
 }
 
+function normalizeProfileRole(value) {
+  return typeof value === 'string' ? value.trim().toLowerCase() : ''
+}
+
+function isMissingColumnError(error) {
+  return String(error?.message ?? '').toLowerCase().includes('column')
+}
+
+function getRoleFromAuthUser(user) {
+  return normalizeProfileRole(
+    user?.app_metadata?.role ??
+      user?.user_metadata?.role ??
+      user?.app_metadata?.user_role ??
+      user?.user_metadata?.user_role,
+  )
+}
+
 function applyFoodFilters(foods, filters) {
   return foods.filter((food) => {
     if (filters.excludedFoodStyles.includes(food.food_style)) {
@@ -93,9 +106,13 @@ function applyFoodFilters(foods, filters) {
 
 function App() {
   const [activePage, setActivePage] = useState(PAGES.WHEEL)
-  const [isAdmin, setIsAdmin] = useState(() => loadAdminState())
-  const [isPinModalOpen, setIsPinModalOpen] = useState(false)
-  const [pinErrorMessage, setPinErrorMessage] = useState('')
+  const [session, setSession] = useState(null)
+  const [profileRole, setProfileRole] = useState('')
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true)
+  const [isAdminAuthModalOpen, setIsAdminAuthModalOpen] = useState(false)
+  const [authErrorMessage, setAuthErrorMessage] = useState('')
+  const [authInfoMessage, setAuthInfoMessage] = useState('')
+  const [isSendingMagicLink, setIsSendingMagicLink] = useState(false)
   const [malls, setMalls] = useState([])
   const [isLoadingMalls, setIsLoadingMalls] = useState(true)
   const [mallErrorMessage, setMallErrorMessage] = useState('')
@@ -104,6 +121,8 @@ function App() {
   const [isLoadingFoods, setIsLoadingFoods] = useState(false)
   const [foodErrorMessage, setFoodErrorMessage] = useState('')
   const [filters, setFilters] = useState(() => loadWheelFilters())
+  const [isMallPickerOpen, setIsMallPickerOpen] = useState(false)
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false)
   const [historyEntries, setHistoryEntries] = useState([])
   const [isLoadingHistory, setIsLoadingHistory] = useState(true)
   const [historyErrorMessage, setHistoryErrorMessage] = useState('')
@@ -111,9 +130,34 @@ function App() {
   const [lastResult, setLastResult] = useState('')
   const [themeMode, setThemeMode] = useState(() => loadThemeMode())
   const isDark = themeMode === 'dark'
+  const isAdmin = profileRole === 'admin'
+  const authButtonLabel = session?.user?.email ? 'Sign Out' : 'Admin Sign In'
+  const adminStatusMessage = useMemo(() => {
+    if (isLoadingProfile) {
+      return 'Checking admin access'
+    }
+
+    if (!session?.user?.email) {
+      return 'Public wheel access'
+    }
+
+    if (authErrorMessage) {
+      return `Profile access blocked for ${session.user.email}`
+    }
+
+    if (isAdmin) {
+      return `Admin access: ${session.user.email}`
+    }
+
+    return `Signed in as ${profileRole || 'no role'}: ${session.user.email}`
+  }, [authErrorMessage, isAdmin, isLoadingProfile, profileRole, session])
 
   const activeMall = useMemo(
     () => malls.find((mall) => mall.id === activeMallId) ?? null,
+    [activeMallId, malls],
+  )
+  const hasValidActiveMall = useMemo(
+    () => malls.some((mall) => mall.id === activeMallId),
     [activeMallId, malls],
   )
   const filteredFoods = useMemo(
@@ -136,6 +180,27 @@ function App() {
   useEffect(() => {
     void loadMalls()
     void loadSpinHistory()
+    void initializeAuth()
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession)
+      setAuthErrorMessage('')
+      setAuthInfoMessage('')
+
+      if (!nextSession?.user) {
+        setProfileRole('')
+        setIsLoadingProfile(false)
+        return
+      }
+
+      void loadProfileRole(nextSession.user)
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
   }, [])
 
   useEffect(() => {
@@ -160,7 +225,14 @@ function App() {
   useEffect(() => {
     setLastResult('')
 
-    if (!activeMallId) {
+    if (!activeMallId || isLoadingMalls) {
+      setFoods([])
+      setFoodErrorMessage('')
+      setIsLoadingFoods(false)
+      return
+    }
+
+    if (!hasValidActiveMall) {
       setFoods([])
       setFoodErrorMessage('')
       setIsLoadingFoods(false)
@@ -168,7 +240,91 @@ function App() {
     }
 
     void loadFoods(activeMallId)
-  }, [activeMallId])
+  }, [activeMallId, hasValidActiveMall, isLoadingMalls])
+
+  async function initializeAuth() {
+    setIsLoadingProfile(true)
+
+    const {
+      data: { session: currentSession },
+    } = await supabase.auth.getSession()
+
+    setSession(currentSession)
+
+    if (!currentSession?.user) {
+      setProfileRole('')
+      setIsLoadingProfile(false)
+      return
+    }
+
+    await loadProfileRole(currentSession.user)
+  }
+
+  async function loadProfileRole(user) {
+    setIsLoadingProfile(true)
+
+    const authRole = getRoleFromAuthUser(user)
+
+    if (authRole) {
+      setAuthErrorMessage('')
+      setProfileRole(authRole)
+      setIsLoadingProfile(false)
+      return
+    }
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    if (error) {
+      setProfileRole('')
+      setAuthErrorMessage('Signed in, but admin profile could not be loaded.')
+      setIsLoadingProfile(false)
+      return
+    }
+
+    let nextRole = normalizeProfileRole(data?.role)
+
+    if (!nextRole) {
+      const { data: userIdData, error: userIdError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+      if (userIdError && !isMissingColumnError(userIdError)) {
+        setProfileRole('')
+        setAuthErrorMessage('Signed in, but admin profile could not be loaded.')
+        setIsLoadingProfile(false)
+        return
+      }
+
+      nextRole = normalizeProfileRole(userIdData?.role)
+    }
+
+    if (!nextRole && user.email) {
+      const { data: emailData, error: emailError } = await supabase
+        .from('profiles')
+        .select('role')
+        .ilike('email', user.email.trim())
+        .maybeSingle()
+
+      if (emailError && !isMissingColumnError(emailError)) {
+        setProfileRole('')
+        setAuthErrorMessage('Signed in, but admin profile could not be loaded.')
+        setIsLoadingProfile(false)
+        return
+      }
+
+      nextRole = normalizeProfileRole(emailData?.role)
+    }
+
+    setAuthErrorMessage('')
+    setProfileRole(nextRole)
+    setIsLoadingProfile(false)
+  }
 
   async function loadMalls(preferredMallId) {
     setIsLoadingMalls(true)
@@ -254,34 +410,48 @@ function App() {
     setIsLoadingHistory(false)
   }
 
-  function handleAdminToggle(nextValue) {
-    if (nextValue) {
-      setPinErrorMessage('')
-      setIsPinModalOpen(true)
+  async function handleAdminSignIn(email) {
+    const normalizedEmail = email.trim().toLowerCase()
+
+    if (!normalizedEmail) {
+      setAuthErrorMessage('Admin email is required.')
       return
     }
 
-    clearAdminState()
-    setIsAdmin(false)
-    setIsPinModalOpen(false)
-    setPinErrorMessage('')
-  }
+    setIsSendingMagicLink(true)
+    setAuthErrorMessage('')
+    setAuthInfoMessage('')
 
-  function handlePinSubmit(pin) {
-    if (pin !== ADMIN_PIN) {
-      setPinErrorMessage('Incorrect PIN.')
+    const { error } = await supabase.auth.signInWithOtp({
+      email: normalizedEmail,
+      options: {
+        emailRedirectTo: window.location.origin,
+        shouldCreateUser: false,
+      },
+    })
+
+    setIsSendingMagicLink(false)
+
+    if (error) {
+      setAuthErrorMessage(error.message)
       return
     }
 
-    saveAdminState(true)
-    setIsAdmin(true)
-    setIsPinModalOpen(false)
-    setPinErrorMessage('')
+    setAuthInfoMessage('Magic link sent. Open the email on this device to finish admin sign-in.')
   }
 
-  function handleClosePinModal() {
-    setIsPinModalOpen(false)
-    setPinErrorMessage('')
+  async function handleAdminSignOut() {
+    const { error } = await supabase.auth.signOut()
+
+    if (error) {
+      setAuthErrorMessage(error.message)
+      return
+    }
+
+    setProfileRole('')
+    setIsAdminAuthModalOpen(false)
+    setAuthErrorMessage('')
+    setAuthInfoMessage('')
   }
 
   async function handleCreateMall(name) {
@@ -494,48 +664,32 @@ function App() {
   }
 
   return (
-    <div
-      className={`min-h-screen ${
-        isDark
-          ? 'bg-[radial-gradient(circle_at_top,_rgba(30,41,59,0.98),_rgba(15,23,42,1)_45%,_rgba(2,6,23,1)_100%)] text-slate-100'
-          : 'bg-[radial-gradient(circle_at_top,_rgba(255,239,213,0.85),_rgba(249,250,251,0.96)_45%,_rgba(214,228,255,0.85)_100%)] text-slate-900'
-      }`}
-    >
-      <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-6 sm:px-6 lg:px-8">
-        <header
-          className={`overflow-hidden rounded-[1.75rem] border p-4 shadow-[0_24px_80px_rgba(15,23,42,0.12)] backdrop-blur sm:p-5 ${
-            isDark
-              ? 'border-slate-700/80 bg-slate-900/80'
-              : 'border-white/70 bg-white/75'
-          }`}
-        >
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div className="max-w-3xl space-y-2">
-                <p
-                  className={`text-xs font-semibold uppercase tracking-[0.35em] ${
-                    isDark ? 'text-orange-300' : 'text-orange-700'
-                  }`}
-                >
-                  Mall Food Wheelspin
-                </p>
-                <h1
-                  className={`font-['Trebuchet_MS','Avenir_Next',sans-serif] text-3xl font-black tracking-tight sm:text-4xl ${
-                    isDark ? 'text-white' : 'text-slate-950'
-                  }`}
-                >
-                  Spin once, settle lunch, move on.
-                </h1>
-                <p
-                  className={`max-w-2xl text-sm leading-6 ${
-                    isDark ? 'text-slate-300' : 'text-slate-600'
-                  }`}
-                >
-                  Wheel stays public. Admin Mode unlocks mall and food management with a
-                  frontend PIN stored in localStorage.
-                </p>
+    <div className="app-page" data-mode={isDark ? 'dark' : 'light'}>
+      <div className="app-shell">
+        <header className="app-header" data-mode={isDark ? 'dark' : 'light'}>
+          <div className="app-header-stack">
+            <div className="app-header-top">
+              <div>
+                <p className="app-brand-kicker" data-mode={isDark ? 'dark' : 'light'}>Cincailah</p>
+                <h1 className="app-brand-title" data-mode={isDark ? 'dark' : 'light'}>Cincailah</h1>
               </div>
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="app-header-actions">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (session?.user?.email) {
+                      void handleAdminSignOut()
+                      return
+                    }
+
+                    setAuthErrorMessage('')
+                    setAuthInfoMessage('')
+                    setIsAdminAuthModalOpen(true)
+                  }}
+                  className={`button-chip ${isDark ? 'button-chip--dark' : 'button-chip--light'} sm:hidden`}
+                >
+                  {authButtonLabel}
+                </button>
                 <ThemeToggle
                   themeMode={themeMode}
                   onToggle={() =>
@@ -544,36 +698,35 @@ function App() {
                     )
                   }
                 />
-                <AdminToggle
-                  isAdmin={isAdmin}
-                  isDark={isDark}
-                  onChange={handleAdminToggle}
-                />
               </div>
             </div>
 
-            <div
-              className={`flex flex-col gap-3 border-t pt-3 sm:flex-row sm:items-center sm:justify-between ${
-                isDark ? 'border-slate-700/80' : 'border-slate-200/80'
-              }`}
-            >
+            <div className="app-header-nav" data-mode={isDark ? 'dark' : 'light'}>
               <Navbar
                 activePage={activePage}
+                authStatusMessage={adminStatusMessage}
                 isDark={isDark}
                 isAdmin={isAdmin}
+                isLoadingProfile={isLoadingProfile}
+                sessionEmail={session?.user?.email ?? ''}
                 onNavigate={setActivePage}
+                onOpenAdminSignIn={() => {
+                  setAuthErrorMessage('')
+                  setAuthInfoMessage('')
+                  setIsAdminAuthModalOpen(true)
+                }}
+                onSignOut={() => {
+                  void handleAdminSignOut()
+                }}
               />
-              <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                {isAdmin ? 'Admin mode unlocked' : 'Admin mode locked'}
-              </p>
             </div>
           </div>
         </header>
 
-        <main className="mt-6 flex-1">
+        <main className="app-main">
           {activePage === PAGES.WHEEL ? (
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
-              <section className="space-y-6">
+            <div className="wheel-page-layout">
+              <aside className="wheel-side-panel wheel-side-panel--left">
                 <MallSelector
                   malls={malls}
                   activeMallId={activeMallId}
@@ -588,6 +741,39 @@ function App() {
                   onChange={handleFilterChange}
                   onReset={() => setFilters(DEFAULT_WHEEL_FILTERS)}
                 />
+              </aside>
+
+              <section className="wheel-main">
+                <div className="mobile-quick-actions">
+                  <button
+                    type="button"
+                    onClick={() => setIsMallPickerOpen(true)}
+                    className="mobile-quick-action"
+                    data-mode={isDark ? 'dark' : 'light'}
+                  >
+                    <p className="mobile-quick-kicker" data-mode={isDark ? 'dark' : 'light'}>Mall</p>
+                    <p className="mobile-quick-value mobile-quick-value--truncate">{activeMall?.name ?? 'Select mall'}</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsFilterPanelOpen(true)}
+                    className="mobile-quick-action"
+                    data-mode={isDark ? 'dark' : 'light'}
+                  >
+                    <p className="mobile-quick-kicker" data-mode={isDark ? 'dark' : 'light'}>Filters</p>
+                    <p className="mobile-quick-value">
+                      {[
+                        filters.halalOnly ? 'Halal' : '',
+                        filters.veganOnly ? 'Vegan' : '',
+                        filters.foodStyle || '',
+                        filters.priceRange || '',
+                      ]
+                        .filter(Boolean)
+                        .slice(0, 2)
+                        .join(' · ') || 'Open filters'}
+                    </p>
+                  </button>
+                </div>
                 <Wheel
                   key={activeMall?.id ?? 'wheel'}
                   isDark={isDark}
@@ -600,11 +786,9 @@ function App() {
                 />
               </section>
 
-              <aside className="space-y-6">
+              <aside className="wheel-side-panel wheel-side-panel--right">
                 {mallErrorMessage ? (
-                  <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                    {mallErrorMessage}
-                  </p>
+                  <p className="status-message status-message--error">{mallErrorMessage}</p>
                 ) : null}
                 {!isLoadingMalls && !malls.length ? (
                   <p
@@ -664,13 +848,76 @@ function App() {
         </main>
       </div>
 
-      <PinModal
-        isOpen={isPinModalOpen}
-        errorMessage={pinErrorMessage}
+      <AdminAuthModal
+        isOpen={isAdminAuthModalOpen}
         isDark={isDark}
-        onClose={handleClosePinModal}
-        onSubmit={handlePinSubmit}
+        isSubmitting={isSendingMagicLink}
+        errorMessage={authErrorMessage}
+        infoMessage={authInfoMessage}
+        onClose={() => {
+          setIsAdminAuthModalOpen(false)
+          setAuthErrorMessage('')
+          setAuthInfoMessage('')
+        }}
+        onSubmit={(email) => {
+          void handleAdminSignIn(email)
+        }}
       />
+
+      <MobilePanelModal
+        isOpen={isMallPickerOpen}
+        isDark={isDark}
+        title="Select mall"
+        onClose={() => setIsMallPickerOpen(false)}
+      >
+        <div className="space-y-3">
+          {malls.length ? (
+            malls.map((mall) => {
+              const isSelected = mall.id === activeMallId
+
+              return (
+                <button
+                  key={mall.id}
+                  type="button"
+                  onClick={() => {
+                    setActiveMallId(mall.id)
+                    setIsMallPickerOpen(false)
+                  }}
+                  className={`w-full rounded-[1.35rem] border px-4 py-3 text-left transition ${
+                    isSelected
+                      ? 'border-emerald-500 bg-emerald-600 text-white'
+                      : isDark
+                        ? 'border-slate-700 bg-slate-900 text-slate-100 hover:bg-slate-800'
+                        : 'border-slate-200 bg-white text-slate-900 hover:bg-slate-50'
+                  }`}
+                >
+                  <p className="text-sm font-semibold">{mall.name}</p>
+                </button>
+              )
+            })
+          ) : (
+            <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+              No malls available yet.
+            </p>
+          )}
+        </div>
+      </MobilePanelModal>
+
+      <MobilePanelModal
+        isOpen={isFilterPanelOpen}
+        isDark={isDark}
+        title="Filters"
+        onClose={() => setIsFilterPanelOpen(false)}
+      >
+        <FilterBar
+          filters={filters}
+          foodStyleOptions={FOOD_STYLE_OPTIONS}
+          priceRangeOptions={PRICE_RANGE_OPTIONS}
+          isDark={isDark}
+          onChange={handleFilterChange}
+          onReset={() => setFilters(DEFAULT_WHEEL_FILTERS)}
+        />
+      </MobilePanelModal>
     </div>
   )
 }

@@ -24,90 +24,66 @@ function FilterBar({
   }
 
   return (
-    <section
-      className={`rounded-[1.75rem] border p-4 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur ${
-        isDark
-          ? 'border-slate-700/80 bg-slate-900/80'
-          : 'border-slate-200/70 bg-white/80'
-      }`}
-    >
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+    <section className="surface-panel" data-mode={isDark ? 'dark' : 'light'}>
+      <div className="surface-panel-header">
         <div>
-          <p
-            className={`text-xs font-semibold uppercase tracking-[0.28em] ${
-              isDark ? 'text-slate-400' : 'text-slate-500'
-            }`}
-          >
-            Filters
-          </p>
-          <h2
-            className={`mt-1 text-xl font-bold tracking-tight ${
-              isDark ? 'text-white' : 'text-slate-950'
-            }`}
-          >
-            Quick filter
-          </h2>
+          <p className="section-kicker" data-mode={isDark ? 'dark' : 'light'}>Filters</p>
+          <h2 className="section-title" data-mode={isDark ? 'dark' : 'light'}>Quick filter</h2>
         </div>
 
-        <button
-          type="button"
-          onClick={onReset}
-          className={`rounded-2xl border px-3 py-2 text-sm font-semibold transition ${
-            isDark
-              ? 'border-slate-600 text-slate-200 hover:bg-slate-800'
-              : 'border-slate-200 text-slate-700 hover:bg-white'
-          }`}
-        >
-          Reset
-        </button>
+        <div>
+          <button
+            type="button"
+            onClick={onReset}
+            className="button-outline"
+            data-mode={isDark ? 'dark' : 'light'}
+          >
+            Reset
+          </button>
+        </div>
       </div>
 
-      <div className="mt-4 grid gap-3 xl:grid-cols-[auto_auto_minmax(0,1fr)_minmax(0,1fr)]">
-        <button
-          type="button"
-          onClick={() => toggleFilter('halalOnly')}
-          className={`rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
-            filters.halalOnly
-              ? 'border-emerald-500 bg-emerald-600 text-white'
-              : isDark
-                ? 'border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700'
-                : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-white'
-          }`}
-          aria-pressed={filters.halalOnly}
-        >
-          Halal
-        </button>
+      <div className="filter-grid">
+        <div className="col-span-full flex gap-3">
+          <button
+            type="button"
+            onClick={() => toggleFilter('halalOnly')}
+            className={`flex h-16 w-16 items-center justify-center rounded-2xl border text-sm font-semibold transition ${
+              filters.halalOnly
+                ? 'border-emerald-500 bg-emerald-500 text-white shadow-[0_10px_24px_rgba(16,185,129,0.26)]'
+                : isDark
+                  ? 'border-slate-700 bg-slate-900 text-slate-200 hover:border-slate-500'
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+            }`}
+            aria-pressed={filters.halalOnly}
+          >
+            Halal
+          </button>
 
-        <button
-          type="button"
-          onClick={() => toggleFilter('veganOnly')}
-          className={`rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
-            filters.veganOnly
-              ? 'border-emerald-500 bg-emerald-600 text-white'
-              : isDark
-                ? 'border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700'
-                : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-white'
-          }`}
-          aria-pressed={filters.veganOnly}
-        >
-          Vegan
-        </button>
+          <button
+            type="button"
+            onClick={() => toggleFilter('veganOnly')}
+            className={`flex h-16 w-16 items-center justify-center rounded-2xl border text-sm font-semibold transition ${
+              filters.veganOnly
+                ? 'border-emerald-500 bg-emerald-500 text-white shadow-[0_10px_24px_rgba(16,185,129,0.26)]'
+                : isDark
+                  ? 'border-slate-700 bg-slate-900 text-slate-200 hover:border-slate-500'
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+            }`}
+            aria-pressed={filters.veganOnly}
+          >
+            Vegan
+          </button>
+        </div>
 
-        <label
-          className={`flex flex-col gap-2 text-sm font-medium ${
-            isDark ? 'text-slate-200' : 'text-slate-700'
-          }`}
-        >
+        <label className="field-stack" data-mode={isDark ? 'dark' : 'light'}>
           Food style
           <select
             name="foodStyle"
             value={filters.foodStyle}
             onChange={handleSelectChange}
-            className={`rounded-2xl border px-4 py-3 outline-none transition focus:border-orange-400 focus:ring-4 focus:ring-orange-100 ${
-              isDark
-                ? 'border-slate-700 bg-slate-800 text-slate-100 focus:bg-slate-800'
-                : 'border-slate-200 bg-slate-50 text-slate-900 focus:bg-white'
-            }`}
+            className="form-control"
+            data-mode={isDark ? 'dark' : 'light'}
           >
             <option value="">All food styles</option>
             {foodStyleOptions.map((option) => (
@@ -118,21 +94,14 @@ function FilterBar({
           </select>
         </label>
 
-        <label
-          className={`flex flex-col gap-2 text-sm font-medium ${
-            isDark ? 'text-slate-200' : 'text-slate-700'
-          }`}
-        >
+        <label className="field-stack" data-mode={isDark ? 'dark' : 'light'}>
           Price range
           <select
             name="priceRange"
             value={filters.priceRange}
             onChange={handleSelectChange}
-            className={`rounded-2xl border px-4 py-3 outline-none transition focus:border-orange-400 focus:ring-4 focus:ring-orange-100 ${
-              isDark
-                ? 'border-slate-700 bg-slate-800 text-slate-100 focus:bg-slate-800'
-                : 'border-slate-200 bg-slate-50 text-slate-900 focus:bg-white'
-            }`}
+            className="form-control"
+            data-mode={isDark ? 'dark' : 'light'}
           >
             <option value="">All price ranges</option>
             {priceRangeOptions.map((option) => (
@@ -144,31 +113,20 @@ function FilterBar({
         </label>
       </div>
 
-      <details
-        className={`mt-3 rounded-2xl border px-4 py-3 ${
-          isDark ? 'border-slate-700 bg-slate-950/60' : 'border-slate-200 bg-slate-50/80'
-        }`}
-      >
-        <summary
-          className={`cursor-pointer list-none text-sm font-semibold ${
-            isDark ? 'text-slate-200' : 'text-slate-700'
-          }`}
-        >
+      <details className="filter-exclude-panel" data-mode={isDark ? 'dark' : 'light'}>
+        <summary className="filter-exclude-summary" data-mode={isDark ? 'dark' : 'light'}>
           Exclude food styles
           {filters.excludedFoodStyles.length ? ` (${filters.excludedFoodStyles.length})` : ''}
         </summary>
-        <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="filter-exclude-list">
           {foodStyleOptions.map((style) => {
             const isExcluded = filters.excludedFoodStyles.includes(style)
 
             return (
               <label
                 key={style}
-                className={`flex items-center gap-3 rounded-xl border px-3 py-2 text-sm ${
-                  isDark
-                    ? 'border-slate-700 bg-slate-900 text-slate-200'
-                    : 'border-slate-200 bg-white text-slate-700'
-                }`}
+                className="filter-exclude-item"
+                data-mode={isDark ? 'dark' : 'light'}
               >
                 <input
                   type="checkbox"
@@ -179,7 +137,7 @@ function FilterBar({
                   }
                   className="h-4 w-4 rounded border-slate-300 text-red-600 focus:ring-red-500"
                 />
-                <span>{style}</span>
+                <span className="filter-exclude-label">{style}</span>
               </label>
             )
           })}
