@@ -6,7 +6,7 @@ Frontend-only food picker for three Klang Valley malls:
 - The Exchange TRX
 - Mid Valley Megamall
 
-Built with Vite, React, and Tailwind CSS. State is persisted in `localStorage`, including the last 50 spins.
+Built with Vite, React, and Tailwind CSS. State is persisted in `localStorage`, including a per-user last-50 spin history.
 
 ## Features
 
@@ -14,7 +14,7 @@ Built with Vite, React, and Tailwind CSS. State is persisted in `localStorage`, 
 - Per-mall food options with add, edit, delete, and bulk paste import
 - Deduplication by normalized name
 - Animated SVG wheel with a fixed pointer and uniform random selection
-- Spin history with timestamp, mall, and result
+- Per-user spin history with timestamp, mall, and result
 - Full app state export to JSON and import from JSON
 
 ## Setup
@@ -86,7 +86,7 @@ npm test
 
 ## Notes
 
-- Selected mall, wheel filters, and theme mode are stored in browser `localStorage`.
+- Selected mall, wheel filters, theme mode, and per-user spin history are stored in browser `localStorage`.
 - Supabase RLS now requires matching policies for public wheel reads and authenticated admin writes.
 - Admin access depends on a signed-in Supabase user whose `profiles.role` is `admin`.
 - `VITE_ADMIN_GATE_PIN` is only a client-side gate for the sign-in flow, not the source of truth for authorization.

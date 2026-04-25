@@ -12,9 +12,11 @@ import Wheel from './components/Wheel.jsx'
 import {
   DEFAULT_WHEEL_FILTERS,
   loadSelectedMallId,
+  loadSpinHistoryEntries,
   loadThemeMode,
   loadWheelFilters,
   saveSelectedMallId,
+  saveSpinHistoryEntries,
   saveThemeMode,
   saveWheelFilters,
 } from './lib/storage.js'
@@ -76,6 +78,16 @@ function getRoleFromAuthUser(user) {
       user?.app_metadata?.user_role ??
       user?.user_metadata?.user_role,
   )
+}
+
+function getHistoryUserKey(session) {
+  const email = session?.user?.email?.trim().toLowerCase()
+
+  if (email) {
+    return email
+  }
+
+  return session?.user?.id ?? 'guest'
 }
 
 function applyFoodFilters(foods, filters) {
@@ -176,10 +188,10 @@ function App() {
     [historyEntries, malls],
   )
   const recentHistoryItems = useMemo(() => historyItems.slice(0, 5), [historyItems])
+  const historyUserKey = useMemo(() => getHistoryUserKey(session), [session])
 
   useEffect(() => {
     void loadMalls()
-    void loadSpinHistory()
     void initializeAuth()
 
     const {
@@ -215,6 +227,13 @@ function App() {
     saveThemeMode(themeMode)
     document.documentElement.dataset.theme = themeMode
   }, [themeMode])
+
+  useEffect(() => {
+    setIsLoadingHistory(true)
+    setHistoryErrorMessage('')
+    setHistoryEntries(loadSpinHistoryEntries(historyUserKey))
+    setIsLoadingHistory(false)
+  }, [historyUserKey])
 
   useEffect(() => {
     if (!isAdmin && activePage !== PAGES.WHEEL) {
@@ -389,27 +408,6 @@ function App() {
     setIsLoadingFoods(false)
   }
 
-  async function loadSpinHistory() {
-    setIsLoadingHistory(true)
-    setHistoryErrorMessage('')
-
-    const { data, error } = await supabase
-      .from('spin_history')
-      .select('id, mall_id, food_id, food_name_snapshot, created_on')
-      .order('created_on', { ascending: false })
-      .limit(50)
-
-    if (error) {
-      setHistoryErrorMessage(error.message)
-      setHistoryEntries([])
-      setIsLoadingHistory(false)
-      return
-    }
-
-    setHistoryEntries(data ?? [])
-    setIsLoadingHistory(false)
-  }
-
   async function handleAdminSignIn(email) {
     const normalizedEmail = email.trim().toLowerCase()
 
@@ -503,7 +501,6 @@ function App() {
     }
 
     await loadMalls()
-    await loadSpinHistory()
     return { error: '' }
   }
 
@@ -618,18 +615,24 @@ function App() {
       return
     }
 
-    const { error } = await supabase.from('spin_history').insert({
+    const nextEntry = {
+      id: `${Date.now()}-${food.id}`,
       mall_id: activeMallId,
       food_id: food.id,
       food_name_snapshot: food.name,
-    })
-
-    if (error) {
-      setHistorySaveErrorMessage('Spin finished, but history could not be saved.')
-      return
+      created_on: new Date().toISOString(),
     }
 
-    await loadSpinHistory()
+    setHistoryEntries((currentEntries) => {
+      const nextEntries = [nextEntry, ...currentEntries].slice(0, 50)
+      const isSaved = saveSpinHistoryEntries(historyUserKey, nextEntries)
+
+      if (!isSaved) {
+        setHistorySaveErrorMessage('Spin finished, but history could not be saved on this device.')
+      }
+
+      return nextEntries
+    })
   }
 
   function handleFilterChange(nextFilters) {
