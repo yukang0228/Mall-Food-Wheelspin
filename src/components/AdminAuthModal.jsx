@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { verifyAdminGatePin } from '../lib/adminAuth.js'
 
 const ADMIN_GATE_PIN = import.meta.env.VITE_ADMIN_GATE_PIN?.trim() ?? ''
 
@@ -49,19 +50,9 @@ function AdminAuthModal({
 
   function handlePinSubmit(event) {
     event.preventDefault()
-
-    if (!ADMIN_GATE_PIN) {
-      setPinErrorMessage('Admin PIN is not configured.')
-      return
-    }
-
-    if (pin !== ADMIN_GATE_PIN) {
-      setPinErrorMessage('Incorrect PIN.')
-      return
-    }
-
-    setIsPinUnlocked(true)
-    setPinErrorMessage('')
+    const result = verifyAdminGatePin(pin, ADMIN_GATE_PIN)
+    setIsPinUnlocked(result.isUnlocked)
+    setPinErrorMessage(result.errorMessage)
   }
 
   return (

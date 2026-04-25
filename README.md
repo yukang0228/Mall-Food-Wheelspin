@@ -58,6 +58,12 @@ npm run build
 
 The output is generated in `dist/`.
 
+Run the test suite:
+
+```bash
+npm test
+```
+
 ## Deploy
 
 ### Cloudflare Pages
@@ -68,6 +74,7 @@ The output is generated in `dist/`.
    - Build command: `npm run build`
    - Build output directory: `dist`
 4. Deploy.
+5. The repo includes `public/_headers`, so the built site ships the same baseline security headers used by Vite dev/preview.
 
 ### GitHub Pages
 
@@ -75,13 +82,15 @@ The output is generated in `dist/`.
 2. Publish the `dist/` folder with your preferred static deployment flow.
 3. If you deploy under a subpath, set the Vite `base` option in `vite.config.js` before building.
 4. Enable GitHub Pages for the published branch or artifact.
+5. GitHub Pages does not apply the `public/_headers` file, so equivalent headers must be configured through a different hosting layer if you need them in production.
 
 ## Notes
 
 - Selected mall, wheel filters, and theme mode are stored in browser `localStorage`.
 - Supabase RLS now requires matching policies for public wheel reads and authenticated admin writes.
 - Admin access depends on a signed-in Supabase user whose `profiles.role` is `admin`.
+- `VITE_ADMIN_GATE_PIN` is only a client-side gate for the sign-in flow, not the source of truth for authorization.
 - `.env` files are gitignored; use `.env.example` as the committed template.
-- Vite dev and preview now send baseline security headers. Mirror equivalent headers in your production hosting config.
+- Vite dev and preview send baseline security headers, and `public/_headers` carries the same set into static builds for hosts that support header rules files.
 - Importing JSON replaces the current in-browser state.
 - No backend or map integration is included in this MVP.
