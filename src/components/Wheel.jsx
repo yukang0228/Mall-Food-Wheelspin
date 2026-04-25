@@ -103,7 +103,7 @@ function Wheel({
   const segmentAngle = options.length ? 360 / options.length : 0
   const isDenseWheel = options.length >= 16
   const labelRadius = radius * (isDenseWheel ? 0.78 : 0.72)
-  const labelFontSize = isDenseWheel ? 11 : 13
+  const labelFontSize = isDenseWheel ? 9 : 11
   const segmentAngleInRadians = segmentAngle ? (segmentAngle * Math.PI) / 180 : 0
   const labelWidth = Math.max(
     42,
@@ -369,6 +369,9 @@ async function playRespinSound() {
                   role="button"
                   tabIndex={canSpin ? 0 : -1}
                   aria-label={canSpin ? 'Spin wheel' : 'Wheel cannot spin yet'}
+                  onMouseDown={(event) => {
+                    event.preventDefault()
+                  }}
                   onClick={canSpin ? startSpin : undefined}
                   onKeyDown={(event) => {
                     if (!canSpin) {
@@ -385,12 +388,37 @@ async function playRespinSound() {
                   <circle
                     cx={center}
                     cy={center}
-                    r="30"
+                    r="88"
+                    fill={canSpin ? 'rgba(15, 23, 42, 0.18)' : 'rgba(71, 85, 105, 0.16)'}
+                  />
+                  <circle
+                    cx={center}
+                    cy={center}
+                    r="72"
+                    fill={canSpin ? '#10b981' : '#64748b'}
+                    stroke="rgba(255,255,255,0.92)"
+                    strokeWidth="6"
+                  />
+                  <circle
+                    cx={center}
+                    cy={center}
+                    r="48"
                     fill="#0f172a"
                     stroke={canSpin ? '#10b981' : '#475569'}
                     strokeWidth="4"
                   />
-                  <circle cx={center} cy={center} r="12" fill="#fff" opacity="0.9" />
+                  <text
+                    x={center}
+                    y={center}
+                    fill="white"
+                    fontSize="22"
+                    fontWeight="900"
+                    letterSpacing="2"
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                  >
+                    SPIN
+                  </text>
                 </g>
               </svg>
             </div>

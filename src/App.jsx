@@ -664,16 +664,40 @@ function App() {
   }
 
   return (
-    <div className="app-page" data-mode={isDark ? 'dark' : 'light'}>
-      <div className="app-shell">
-        <header className="app-header" data-mode={isDark ? 'dark' : 'light'}>
-          <div className="app-header-stack">
-            <div className="app-header-top">
-              <div>
-                <p className="app-brand-kicker" data-mode={isDark ? 'dark' : 'light'}>Cincailah</p>
-                <h1 className="app-brand-title" data-mode={isDark ? 'dark' : 'light'}>Cincailah</h1>
+    <div
+      className={`min-h-screen ${
+        isDark
+          ? 'bg-[radial-gradient(circle_at_top,_rgba(30,41,59,0.98),_rgba(15,23,42,1)_45%,_rgba(2,6,23,1)_100%)] text-slate-100'
+          : 'bg-[radial-gradient(circle_at_top,_rgba(255,239,213,0.85),_rgba(249,250,251,0.96)_45%,_rgba(214,228,255,0.85)_100%)] text-slate-900'
+      }`}
+    >
+      <div className="flex min-h-screen w-full flex-col px-4 py-4 sm:px-5 lg:px-6 xl:px-8 2xl:px-10">
+        <header
+          className={`overflow-hidden rounded-[1.75rem] border p-4 shadow-[0_24px_80px_rgba(15,23,42,0.12)] backdrop-blur sm:p-5 ${
+            isDark
+              ? 'border-slate-700/80 bg-slate-900/80'
+              : 'border-white/70 bg-white/75'
+          }`}
+        >
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="max-w-3xl space-y-2">
+                <p
+                  className={`text-xs font-semibold uppercase tracking-[0.35em] ${
+                    isDark ? 'text-orange-300' : 'text-orange-700'
+                  }`}
+                >
+                  Cincailah
+                </p>
+                <h1
+                  className={`font-['Trebuchet_MS','Avenir_Next',sans-serif] text-3xl font-black tracking-tight sm:text-4xl ${
+                    isDark ? 'text-white' : 'text-slate-950'
+                  }`}
+                >
+                  Cannot decide? Just spin lah.
+                </h1>
               </div>
-              <div className="app-header-actions">
+              <div className="flex flex-wrap items-center gap-3">
                 <button
                   type="button"
                   onClick={() => {
@@ -686,7 +710,7 @@ function App() {
                     setAuthInfoMessage('')
                     setIsAdminAuthModalOpen(true)
                   }}
-                  className={`button-chip ${isDark ? 'button-chip--dark' : 'button-chip--light'} sm:hidden`}
+                  className="button-chip button-chip--light sm:hidden"
                 >
                   {authButtonLabel}
                 </button>
@@ -701,11 +725,15 @@ function App() {
               </div>
             </div>
 
-            <div className="app-header-nav" data-mode={isDark ? 'dark' : 'light'}>
+            <div
+              className={`flex flex-col gap-3 border-t pt-3 sm:flex-row sm:items-center sm:justify-between ${
+                isDark ? 'border-slate-700/80' : 'border-slate-200/80'
+              }`}
+            >
               <Navbar
                 activePage={activePage}
-                authStatusMessage={adminStatusMessage}
                 isDark={isDark}
+                authStatusMessage={adminStatusMessage}
                 isAdmin={isAdmin}
                 isLoadingProfile={isLoadingProfile}
                 sessionEmail={session?.user?.email ?? ''}
@@ -719,14 +747,53 @@ function App() {
                   void handleAdminSignOut()
                 }}
               />
+              <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                {adminStatusMessage}
+              </p>
             </div>
           </div>
         </header>
 
-        <main className="app-main">
+        <main className="mt-6 flex-1">
           {activePage === PAGES.WHEEL ? (
-            <div className="wheel-page-layout">
-              <aside className="wheel-side-panel wheel-side-panel--left">
+            <div className="space-y-6 xl:grid xl:grid-cols-[235px_minmax(0,1fr)_255px] xl:gap-5 xl:space-y-0 2xl:grid-cols-[245px_minmax(0,1fr)_265px]">
+              <section className="order-1 space-y-4 xl:col-start-1">
+                <div className="grid gap-3 sm:hidden">
+                  <button
+                    type="button"
+                    onClick={() => setIsMallPickerOpen(true)}
+                    className={`rounded-[1.35rem] border px-4 py-3 text-left ${
+                      isDark
+                        ? 'border-slate-700 bg-slate-900 text-slate-100'
+                        : 'border-slate-200 bg-white text-slate-900'
+                    }`}
+                  >
+                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Mall</p>
+                    <p className="mt-1 text-sm font-semibold">{activeMall?.name ?? 'Select mall'}</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsFilterPanelOpen(true)}
+                    className={`rounded-[1.35rem] border px-4 py-3 text-left ${
+                      isDark
+                        ? 'border-slate-700 bg-slate-900 text-slate-100'
+                        : 'border-slate-200 bg-white text-slate-900'
+                    }`}
+                  >
+                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Filters</p>
+                    <p className="mt-1 text-sm font-semibold">
+                      {[
+                        filters.halalOnly ? 'Halal' : '',
+                        filters.veganOnly ? 'Vegan' : '',
+                        filters.foodStyle || '',
+                        filters.priceRange || '',
+                      ]
+                        .filter(Boolean)
+                        .slice(0, 2)
+                        .join(' · ') || 'Open filters'}
+                    </p>
+                  </button>
+                </div>
                 <MallSelector
                   malls={malls}
                   activeMallId={activeMallId}
@@ -741,39 +808,9 @@ function App() {
                   onChange={handleFilterChange}
                   onReset={() => setFilters(DEFAULT_WHEEL_FILTERS)}
                 />
-              </aside>
+              </section>
 
-              <section className="wheel-main">
-                <div className="mobile-quick-actions">
-                  <button
-                    type="button"
-                    onClick={() => setIsMallPickerOpen(true)}
-                    className="mobile-quick-action"
-                    data-mode={isDark ? 'dark' : 'light'}
-                  >
-                    <p className="mobile-quick-kicker" data-mode={isDark ? 'dark' : 'light'}>Mall</p>
-                    <p className="mobile-quick-value mobile-quick-value--truncate">{activeMall?.name ?? 'Select mall'}</p>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsFilterPanelOpen(true)}
-                    className="mobile-quick-action"
-                    data-mode={isDark ? 'dark' : 'light'}
-                  >
-                    <p className="mobile-quick-kicker" data-mode={isDark ? 'dark' : 'light'}>Filters</p>
-                    <p className="mobile-quick-value">
-                      {[
-                        filters.halalOnly ? 'Halal' : '',
-                        filters.veganOnly ? 'Vegan' : '',
-                        filters.foodStyle || '',
-                        filters.priceRange || '',
-                      ]
-                        .filter(Boolean)
-                        .slice(0, 2)
-                        .join(' · ') || 'Open filters'}
-                    </p>
-                  </button>
-                </div>
+              <div className="order-2 mx-auto w-full max-w-[1500px] xl:col-start-2 xl:row-start-1 xl:self-start xl:max-w-none">
                 <Wheel
                   key={activeMall?.id ?? 'wheel'}
                   isDark={isDark}
@@ -784,11 +821,13 @@ function App() {
                   isLoading={isLoadingFoods}
                   onSpinComplete={handleSpinComplete}
                 />
-              </section>
+              </div>
 
-              <aside className="wheel-side-panel wheel-side-panel--right">
+              <aside className="order-3 space-y-4 xl:col-start-3">
                 {mallErrorMessage ? (
-                  <p className="status-message status-message--error">{mallErrorMessage}</p>
+                  <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {mallErrorMessage}
+                  </p>
                 ) : null}
                 {!isLoadingMalls && !malls.length ? (
                   <p
