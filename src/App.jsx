@@ -90,6 +90,16 @@ function getHistoryUserKey(session) {
   return session?.user?.id ?? 'guest'
 }
 
+function getAdminAuthRedirectUrl() {
+  const configuredUrl = import.meta.env.VITE_APP_URL?.trim()
+
+  if (configuredUrl) {
+    return configuredUrl
+  }
+
+  return new URL(import.meta.env.BASE_URL, window.location.origin).toString()
+}
+
 function applyFoodFilters(foods, filters) {
   return foods.filter((food) => {
     if (filters.excludedFoodStyles.includes(food.food_style)) {
@@ -423,7 +433,7 @@ function App() {
     const { error } = await supabase.auth.signInWithOtp({
       email: normalizedEmail,
       options: {
-        emailRedirectTo: window.location.origin,
+        emailRedirectTo: getAdminAuthRedirectUrl(),
         shouldCreateUser: false,
       },
     })

@@ -36,6 +36,7 @@ Create a local `.env` file for values you do not want committed:
 VITE_SUPABASE_URL=your-supabase-url
 VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
 VITE_ADMIN_GATE_PIN=your-admin-pin
+VITE_APP_URL=http://localhost:5173
 ```
 
 ## Development
@@ -73,16 +74,29 @@ npm test
 3. Use these build settings:
    - Build command: `npm run build`
    - Build output directory: `dist`
-4. Deploy.
-5. The repo includes `public/_headers`, so the built site ships the same baseline security headers used by Vite dev/preview.
+4. Add the same environment variables in Cloudflare Pages. Set `VITE_APP_URL` to your deployed site URL, for example `https://your-project.pages.dev`.
+5. Deploy.
+6. The repo includes `public/_headers`, so the built site ships the same baseline security headers used by Vite dev/preview.
 
 ### GitHub Pages
 
 1. Run `npm run build`.
 2. Publish the `dist/` folder with your preferred static deployment flow.
 3. If you deploy under a subpath, set the Vite `base` option in `vite.config.js` before building.
-4. Enable GitHub Pages for the published branch or artifact.
-5. GitHub Pages does not apply the `public/_headers` file, so equivalent headers must be configured through a different hosting layer if you need them in production.
+4. Set `VITE_APP_URL` to the full GitHub Pages app URL, including the repository subpath, for example `https://username.github.io/mall-food-wheelspin/`.
+5. Enable GitHub Pages for the published branch or artifact.
+6. GitHub Pages does not apply the `public/_headers` file, so equivalent headers must be configured through a different hosting layer if you need them in production.
+
+## Supabase Auth Redirects
+
+For magic-link admin sign-in, configure Supabase Auth with your deployed app URL:
+
+1. In Supabase, open Authentication > URL Configuration.
+2. Set Site URL to your deployed app URL, not `http://localhost:3000`.
+3. Add your deployed app URL to Redirect URLs.
+4. Keep localhost URLs only for local development, such as `http://localhost:5173`.
+
+The app sends `VITE_APP_URL` as the magic-link redirect target. If it is not set, it falls back to the current Vite base URL.
 
 ## Notes
 
